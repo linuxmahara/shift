@@ -60,21 +60,21 @@ var (
 	jsonlogger = logger.NewJsonLogger()
 
 	defaultBootNodes = []*discover.Node{
-        discover.MustParseNode("enode://f15c2f254df692c0cd15f774a9dbb3253134c2d008863c639e5f3d447ed843f37a4590c8688e9c22ed1a8991cf77767d15e520c2e0eda769f0a8994c077acc2c@108.61.103.71:53900"),
+        discover.MustParseNode("enode://d8984b1c44e9bebe191ce1bdde8ea1cc57e12433d8136e32b926f0f0196cd5ac4da5675e2d094ed2ff3844078edc6d8f5e7a0ffeb1d21823eae7356659806700@108.61.103.71:53900"),
         // Dallas
-        discover.MustParseNode("enode://a0c479d18f4411a0de31c73aa3cd7fde81a3e9d12a00ba1ea366369ad009abf6efbf0326cf323a29d3cf6401aa471baaf0606b47f10ce990270438f9332053ca@104.238.146.111:53900"),
+        discover.MustParseNode("enode://2fba7d00ff653fec8745c88dcfa44f0feb85fdbfd4f49b9e29be20838cba24c1cf5f25895767f254943d6a2a011db13c4391d5fb52c0a6794c556066d1e3a54d@104.238.146.111:53900"),
         // Frankfurt
-        discover.MustParseNode("enode://f2608e59410ef397f4ebcb76691922592610f0e833b0f92a19c7c7cb54eb9e18cd63207e07eac2612239ea1cca61f1ef8b3852c6c4025119ca85c082681623b7@104.238.167.149:53900"),
+        discover.MustParseNode("enode://bf7b30f4a4f3db3bcbfc2a4e2fc482049f1a14fc500b2227dc7b6eb66d52d90e8365342e3fd48df8472b46cf6c2d7ba5149a3da207b0e7fb12a455057d282325@104.238.167.149:53900"),
         // London
-        discover.MustParseNode("enode://026c4d47ddef9bcc556150effe784d6ae4ca8d711281ca6f83555de924e58d2fa18172a8063b02d7e5d195ce4c8ecc45fe8f8cb6880b18c3de2bc7d101fdf052@104.238.172.251:53900"),
+        discover.MustParseNode("enode://05ad30f1a793abc18bcb904e627392df7f7b42633ed3f7d1b3a1b7c0de9c497b94d17319107446754378b5bddf6fa57feb507f79c6ff384e9b3de65fa2791dc6@104.238.172.251:53900"),
         // Los Angeles
-        discover.MustParseNode("enode://0d0297e0d604274732a1776dd90012b41edc5fc97d2c510bd761d3bf81dc1343ad08f48f9177dfe1d1b1683c7b19c3a78748f19a11e8b9dd805239417eab5f9b@108.61.218.27:53900"),
+        discover.MustParseNode("enode://2c182f4030c5eba810720476148fd04d8c3bd31616ae9b1fc1c3d1849eb1c8439abee3cab27bc7d75c8f64212d712b4a734341b3d29166361ebbf1c3b2e44b81@108.61.218.27:53900"),
         // Paris
-        discover.MustParseNode("enode://e3207f9fa0fe057e08c6292ec674727a3d6e04c2121a47b00f9c4dc0b14b7f252272f345c3eb1478673f3e2e0a502c637ff0adc5d3d0c2d139005567b17178ec@104.238.191.83:53900"),
+        discover.MustParseNode("enode://454c71212c356aa597ca1f2216ba3315308981554edfca2b7bf673c5d0e2ba7d7e9045198917b4ac5186b3ba30a178ad259c1d07924737153d440bc5851c5af4@104.238.191.83:53900"),
         // Sydney
-        discover.MustParseNode("enode://60d6689ab9a016ef7747e424082fcdf85fdb885b55710771894197981fdd30f7b86b02d908bcf5f788e69c6ce76f8013f10826272c2971c15cd1649cae7d35a0@45.32.241.124:53900"),
+        discover.MustParseNode("enode://7abf1cc297cb6e66ecc6c907cb209dbc33227818192d8a514dbfca8b953c106b8be0f7f432c5ece1948f53b9eb54e426a5c4e8f2f524efc2848aa48f7b8be558@45.32.241.124:53900"),
         // Tokyo
-        discover.MustParseNode("enode://a9a427026bda9a700197f479b71eb071bec54ddcd8f2d6e7d111bf6cf30d2384662cb895071f969bb45e3c9781d43a764ace37eb9dec766077efcdf5913f1960@45.32.253.1:53900"),
+        discover.MustParseNode("enode://174c72999c917cf656d4a8eb0f6ae52dcfa72d62567000a11f66c9cf3fd7972ce25e1faf7e395bb9f5c784736a0319d1b1ff0b3a80b96429018b36cb85de65e3@45.32.253.1:53900"),
 	}
 
 	staticNodes  = "static-nodes.json"  // Path within <datadir> to search for the static node list
