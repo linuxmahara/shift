@@ -1,4 +1,4 @@
-// Copyright 2014 The go-ethereum Authors
+// Copyright 2015 The go-ethereum Authors
 // This file is part of the go-ethereum library.
 //
 // The go-ethereum library is free software: you can redistribute it and/or modify
@@ -14,12 +14,40 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with the go-ethereum library. If not, see <http://www.gnu.org/licenses/>.
 
-package vm
+// +build linux
 
-var (
-	EnableJit   bool // Enables the JIT VM
-	ForceJit    bool // Force the JIT, skip byte VM
-	MaxProgSize int  // Max cache size for JIT Programs
+package fdtrack
+
+import (
+	"io"
+	"os"
+	"syscall"
 )
 
-const defaultJitMaxCache int = 64
+func fdlimit() int {
+	var nofile syscall.Rlimit
+	if err := syscall.Getrlimit(syscall.RLIMIT_NOFILE, &nofile); err != nil {
+		return 0
+	}
+	return int(nofile.Cur)
+}
+
+func fdusage() (int, error) {
+	f, err := os.Open("/proc/self/fd")
+	if err != nil {
+		return 0, err
+	}
+	defer f.Close()
+	const batchSize = 100
+	n := 0
+	for {
+		list, err := f.Readdirnames(batchSize)
+		n += len(list)
+		if err == io.EOF {
+			break
+		} else if err != nil {
+			return 0, err
+		}
+	}
+	return n, nil
+}

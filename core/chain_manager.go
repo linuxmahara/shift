@@ -56,7 +56,9 @@ const (
 
 type ChainManager struct {
 	//eth          EthManager
-	chainDb      common.Database
+	blockDb      common.Database
+	stateDb      common.Database
+	extraDb      common.Database
 	processor    types.BlockProcessor
 	eventMux     *event.TypeMux
 	genesisBlock *types.Block
@@ -83,10 +85,12 @@ type ChainManager struct {
 	pow pow.PoW
 }
 
-func NewChainManager(chainDb common.Database, pow pow.PoW, mux *event.TypeMux) (*ChainManager, error) {
+func NewChainManager(blockDb, stateDb, extraDb common.Database, pow pow.PoW, mux *event.TypeMux) (*ChainManager, error) {
 	cache, _ := lru.New(blockCacheLimit)
 	bc := &ChainManager{
-		chainDb:  chainDb,
+		blockDb:  blockDb,
+		stateDb:  stateDb,
+		extraDb:  extraDb,
 		eventMux: mux,
 		quit:     make(chan struct{}),
 		cache:    cache,
@@ -99,11 +103,11 @@ func NewChainManager(chainDb common.Database, pow pow.PoW, mux *event.TypeMux) (
 		if err != nil {
 			return nil, err
 		}
-		bc.genesisBlock, err = WriteGenesisBlock(chainDb, reader)
+		bc.genesisBlock, err = WriteGenesisBlock(stateDb, blockDb, reader)
 		if err != nil {
 			return nil, err
 		}
-		glog.V(logger.Info).Infoln("WARNING: Wrote default shift genesis block")
+		glog.V(logger.Info).Infoln("WARNING: Wrote default ethereum genesis block")
 	}
 
 	if err := bc.setLastState(); err != nil {
@@ -191,15 +195,15 @@ func (self *ChainManager) SetProcessor(proc types.BlockProcessor) {
 }
 
 func (self *ChainManager) State() *state.StateDB {
-	return state.New(self.CurrentBlock().Root(), self.chainDb)
+	return state.New(self.CurrentBlock().Root(), self.stateDb)
 }
 
 func (bc *ChainManager) recover() bool {
-	data, _ := bc.chainDb.Get([]byte("checkpoint"))
+	data, _ := bc.blockDb.Get([]byte("checkpoint"))
 	if len(data) != 0 {
 		block := bc.GetBlock(common.BytesToHash(data))
 		if block != nil {
-			err := bc.chainDb.Put([]byte("LastBlock"), block.Hash().Bytes())
+			err := bc.blockDb.Put([]byte("LastBlock"), block.Hash().Bytes())
 			if err != nil {
 				glog.Fatalln("db write err:", err)
 			}
@@ -213,7 +217,7 @@ func (bc *ChainManager) recover() bool {
 }
 
 func (bc *ChainManager) setLastState() error {
-	data, _ := bc.chainDb.Get([]byte("LastBlock"))
+	data, _ := bc.blockDb.Get([]byte("LastBlock"))
 	if len(data) != 0 {
 		block := bc.GetBlock(common.BytesToHash(data))
 		if block != nil {
@@ -260,7 +264,7 @@ func (bc *ChainManager) Reset() {
 	bc.cache, _ = lru.New(blockCacheLimit)
 
 	// Prepare the genesis block
-	err := WriteBlock(bc.chainDb, bc.genesisBlock)
+	err := WriteBlock(bc.blockDb, bc.genesisBlock)
 	if err != nil {
 		glog.Fatalln("db err:", err)
 	}
@@ -273,7 +277,7 @@ func (bc *ChainManager) Reset() {
 }
 
 func (bc *ChainManager) removeBlock(block *types.Block) {
-	bc.chainDb.Delete(append(blockHashPre, block.Hash().Bytes()...))
+	bc.blockDb.Delete(append(blockHashPre, block.Hash().Bytes()...))
 }
 
 func (bc *ChainManager) ResetWithGenesisBlock(gb *types.Block) {
@@ -288,7 +292,7 @@ func (bc *ChainManager) ResetWithGenesisBlock(gb *types.Block) {
 	gb.Td = gb.Difficulty()
 	bc.genesisBlock = gb
 
-	err := WriteBlock(bc.chainDb, bc.genesisBlock)
+	err := WriteBlock(bc.blockDb, bc.genesisBlock)
 	if err != nil {
 		glog.Fatalln("db err:", err)
 	}
@@ -335,14 +339,14 @@ func (self *ChainManager) ExportN(w io.Writer, first uint64, last uint64) error 
 // insert injects a block into the current chain block chain. Note, this function
 // assumes that the `mu` mutex is held!
 func (bc *ChainManager) insert(block *types.Block) {
-	err := WriteHead(bc.chainDb, block)
+	err := WriteHead(bc.blockDb, block)
 	if err != nil {
 		glog.Fatal("db write fail:", err)
 	}
 
 	bc.checkpoint++
 	if bc.checkpoint > checkpointLimit {
-		err = bc.chainDb.Put([]byte("checkpoint"), block.Hash().Bytes())
+		err = bc.blockDb.Put([]byte("checkpoint"), block.Hash().Bytes())
 		if err != nil {
 			glog.Fatal("db write fail:", err)
 		}
@@ -365,7 +369,7 @@ func (bc *ChainManager) HasBlock(hash common.Hash) bool {
 		return true
 	}
 
-	data, _ := bc.chainDb.Get(append(blockHashPre, hash[:]...))
+	data, _ := bc.blockDb.Get(append(blockHashPre, hash[:]...))
 	return len(data) != 0
 }
 
@@ -395,7 +399,7 @@ func (self *ChainManager) GetBlock(hash common.Hash) *types.Block {
 		return block.(*types.Block)
 	}
 
-	block := GetBlockByHash(self.chainDb, hash)
+	block := GetBlockByHash(self.blockDb, hash)
 	if block == nil {
 		return nil
 	}
@@ -429,7 +433,7 @@ func (self *ChainManager) GetBlocksFromHash(hash common.Hash, n int) (blocks []*
 
 // non blocking version
 func (self *ChainManager) getBlockByNumber(num uint64) *types.Block {
-	return GetBlockByNumber(self.chainDb, num)
+	return GetBlockByNumber(self.blockDb, num)
 }
 
 func (self *ChainManager) GetUnclesInChain(block *types.Block, length int) (uncles []*types.Header) {
@@ -517,7 +521,7 @@ func (self *ChainManager) WriteBlock(block *types.Block, queued bool) (status wr
 		status = SideStatTy
 	}
 
-	err = WriteBlock(self.chainDb, block)
+	err = WriteBlock(self.blockDb, block)
 	if err != nil {
 		glog.Fatalln("db err:", err)
 	}
@@ -596,8 +600,7 @@ func (self *ChainManager) InsertChain(chain types.Blocks) (int, error) {
 				// Allow up to MaxFuture second in the future blocks. If this limit
 				// is exceeded the chain is discarded and processed at a later time
 				// if given.
-				max := big.NewInt(time.Now().Unix() + maxTimeFutureBlocks)
-				if block.Time().Cmp(max) == 1 {
+				if max := uint64(time.Now().Unix()) + maxTimeFutureBlocks; block.Time() > max {
 					return i, fmt.Errorf("%v: BlockFutureErr, %v > %v", BlockFutureErr, block.Time(), max)
 				}
 
@@ -629,15 +632,15 @@ func (self *ChainManager) InsertChain(chain types.Blocks) (int, error) {
 		switch status {
 		case CanonStatTy:
 			if glog.V(logger.Debug) {
-				glog.Infof("[%v] inserted block #%d (%d TXs %v G %d UNCs) (%x...). Took %v\n", time.Now().UnixNano(), block.Number(), len(block.Transactions()), block.GasUsed(), len(block.Uncles()), block.Hash().Bytes()[0:4], time.Since(bstart))
+				glog.Infof("[%v] inserted block #%d (%d TXs %d UNCs) (%x...). Took %v\n", time.Now().UnixNano(), block.Number(), len(block.Transactions()), len(block.Uncles()), block.Hash().Bytes()[0:4], time.Since(bstart))
 			}
 			queue[i] = ChainEvent{block, block.Hash(), logs}
 			queueEvent.canonicalCount++
 
 			// This puts transactions in a extra db for rpc
-			PutTransactions(self.chainDb, block, block.Transactions())
+			PutTransactions(self.extraDb, block, block.Transactions())
 			// store the receipts
-			PutReceipts(self.chainDb, receipts)
+			PutReceipts(self.extraDb, receipts)
 		case SideStatTy:
 			if glog.V(logger.Detail) {
 				glog.Infof("inserted forked block #%d (TD=%v) (%d TXs %d UNCs) (%x...). Took %v\n", block.Number(), block.Difficulty(), len(block.Transactions()), len(block.Uncles()), block.Hash().Bytes()[0:4], time.Since(bstart))
@@ -648,9 +651,7 @@ func (self *ChainManager) InsertChain(chain types.Blocks) (int, error) {
 			queue[i] = ChainSplitEvent{block, logs}
 			queueEvent.splitCount++
 		}
-		if err := PutBlockReceipts(self.chainDb, block, receipts); err != nil {
-			glog.V(logger.Warn).Infoln("error writing block receipts:", err)
-		}
+		PutBlockReceipts(self.extraDb, block, receipts)
 
 		stats.processed++
 	}
@@ -732,8 +733,8 @@ func (self *ChainManager) merge(oldBlock, newBlock *types.Block) error {
 		// insert the block in the canonical way, re-writing history
 		self.insert(block)
 		// write canonical receipts and transactions
-		PutTransactions(self.chainDb, block, block.Transactions())
-		PutReceipts(self.chainDb, GetBlockReceipts(self.chainDb, block.Hash()))
+		PutTransactions(self.extraDb, block, block.Transactions())
+		PutReceipts(self.extraDb, GetBlockReceipts(self.extraDb, block.Hash()))
 
 	}
 	self.mu.Unlock()

@@ -1,7 +1,7 @@
 # ethutil
 
 [![Build
-Status](https://travis-ci.org/shiftcurrency/shift.png?branch=master)](https://travis-ci.org/shiftcurrency/shift)
+Status](https://travis-ci.org/ethereum/go-ethereum.png?branch=master)](https://travis-ci.org/ethereum/go-ethereum)
 
 The ethutil package contains the ethereum utility library.
 

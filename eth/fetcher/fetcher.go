@@ -428,7 +428,7 @@ func (f *Fetcher) insert(peer string, block *types.Block) {
 
 		case core.BlockFutureErr:
 			futureMeter.Mark(1)
-			// Weird future block, don't fail, but neither propagate
+			// Shtrd future block, don't fail, but neither propagate
 
 		default:
 			// Something went very wrong, drop the peer

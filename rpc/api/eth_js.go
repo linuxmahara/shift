@@ -20,21 +20,19 @@ package api
 // shf_sign not standard
 
 const Eth_JS = `
-web3._extend(
-    // To be figured out // SHIFT
-    {
+web3._extend({
 	property: 'eth',
 	methods:
 	[
 		new web3._extend.Method({
 			name: 'sign',
-			call: 'eth_sign',
+			call: 'shf_sign',
 			params: 2,
 			inputFormatter: [web3._extend.utils.toAddress, null]
 		}),
 		new web3._extend.Method({
 			name: 'resend',
-			call: 'eth_resend',
+			call: 'shf_resend',
 			params: 3,
 			inputFormatter: [web3._extend.formatters.inputTransactionFormatter, web3._extend.utils.fromDecimal, web3._extend.utils.fromDecimal]
 		})
@@ -43,7 +41,7 @@ web3._extend(
 	[
 		new web3._extend.Property({
 			name: 'pendingTransactions',
-			getter: 'eth_pendingTransactions'
+			getter: 'shf_pendingTransactions'
 		})
 	]
 });

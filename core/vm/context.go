@@ -35,7 +35,6 @@ type Context struct {
 	jumpdests destinations // result of JUMPDEST analysis.
 
 	Code     []byte
-	Input    []byte
 	CodeAddr *common.Address
 
 	value, Gas, UsedGas, Price *big.Int

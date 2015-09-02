@@ -23,6 +23,6 @@ const (
 	Core
 	Debug
 	Detail
-
+    SHTshithitsthefan = 99
 	Ridiculousness = 100
 )

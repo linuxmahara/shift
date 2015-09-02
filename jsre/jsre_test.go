@@ -19,7 +19,6 @@ package jsre
 import (
 	"io/ioutil"
 	"os"
-	"path"
 	"testing"
 	"time"
 
@@ -41,23 +40,10 @@ func (no *testNativeObjectBinding) TestMethod(call otto.FunctionCall) otto.Value
 	return v
 }
 
-func newWithTestJS(t *testing.T, testjs string) (*JSRE, string) {
-	dir, err := ioutil.TempDir("", "jsre-test")
-	if err != nil {
-		t.Fatal("cannot create temporary directory:", err)
-	}
-	if testjs != "" {
-		if err := ioutil.WriteFile(path.Join(dir, "test.js"), []byte(testjs), os.ModePerm); err != nil {
-			t.Fatal("cannot create test.js:", err)
-		}
-	}
-	return New(dir), dir
-}
-
 func TestExec(t *testing.T) {
-	jsre, dir := newWithTestJS(t, `msg = "testMsg"`)
-	defer os.RemoveAll(dir)
+	jsre := New("/tmp")
 
+	ioutil.WriteFile("/tmp/test.js", []byte(`msg = "testMsg"`), os.ModePerm)
 	err := jsre.Exec("test.js")
 	if err != nil {
 		t.Errorf("expected no error, got %v", err)
@@ -78,9 +64,9 @@ func TestExec(t *testing.T) {
 }
 
 func TestNatto(t *testing.T) {
-	jsre, dir := newWithTestJS(t, `setTimeout(function(){msg = "testMsg"}, 1);`)
-	defer os.RemoveAll(dir)
+	jsre := New("/tmp")
 
+	ioutil.WriteFile("/tmp/test.js", []byte(`setTimeout(function(){msg = "testMsg"}, 1);`), os.ModePerm)
 	err := jsre.Exec("test.js")
 	if err != nil {
 		t.Errorf("expected no error, got %v", err)
@@ -102,21 +88,26 @@ func TestNatto(t *testing.T) {
 }
 
 func TestBind(t *testing.T) {
-	jsre := New("")
-	defer jsre.Stop(false)
+	jsre := New("/tmp")
 
 	jsre.Bind("no", &testNativeObjectBinding{})
 
-	_, err := jsre.Run(`no.TestMethod("testMsg")`)
+	val, err := jsre.Run(`no.TestMethod("testMsg")`)
 	if err != nil {
 		t.Errorf("expected no error, got %v", err)
 	}
+	pp, err := jsre.PrettyPrint(val)
+	if err != nil {
+		t.Errorf("expected no error, got %v", err)
+	}
+	t.Logf("no: %v", pp)
+	jsre.Stop(false)
 }
 
 func TestLoadScript(t *testing.T) {
-	jsre, dir := newWithTestJS(t, `msg = "testMsg"`)
-	defer os.RemoveAll(dir)
+	jsre := New("/tmp")
 
+	ioutil.WriteFile("/tmp/test.js", []byte(`msg = "testMsg"`), os.ModePerm)
 	_, err := jsre.Run(`loadScript("test.js")`)
 	if err != nil {
 		t.Errorf("expected no error, got %v", err)

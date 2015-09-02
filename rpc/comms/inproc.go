@@ -60,7 +60,7 @@ func (self *InProcClient) Send(req interface{}) error {
 }
 
 func (self *InProcClient) Recv() (interface{}, error) {
-	return *shared.NewRpcResponse(self.lastId, self.lastJsonrpc, self.lastRes, self.lastErr), nil
+	return self.lastRes, self.lastErr
 }
 
 func (self *InProcClient) SupportedModules() (map[string]string, error) {

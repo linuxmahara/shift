@@ -89,7 +89,8 @@ type XEth struct {
 	messagesMu sync.RWMutex
 	messages   map[int]*whisperFilter
 
-	transactMu sync.Mutex
+	// regmut   sync.Mutex
+	// register map[string][]*interface{} // TODO improve return type
 
 	agent *miner.RemoteAgent
 
@@ -212,9 +213,9 @@ func (self *XEth) AtStateNum(num int64) *XEth {
 		st = self.backend.Miner().PendingState().Copy()
 	default:
 		if block := self.getBlockByHeight(num); block != nil {
-			st = state.New(block.Root(), self.backend.ChainDb())
+			st = state.New(block.Root(), self.backend.StateDb())
 		} else {
-			st = state.New(self.backend.ChainManager().GetBlockByNumber(0).Root(), self.backend.ChainDb())
+			st = state.New(self.backend.ChainManager().GetBlockByNumber(0).Root(), self.backend.StateDb())
 		}
 	}
 
@@ -258,7 +259,7 @@ func (self *XEth) UpdateState() (wait chan *big.Int) {
 						wait <- n
 						n = nil
 					}
-					statedb := state.New(ev.Block.Root(), self.backend.ChainDb())
+					statedb := state.New(ev.Block.Root(), self.backend.StateDb())
 					self.state = NewState(self, statedb)
 				}
 			case n, ok = <-wait:
@@ -310,7 +311,7 @@ func (self *XEth) EthBlockByHash(strHash string) *types.Block {
 func (self *XEth) EthTransactionByHash(hash string) (tx *types.Transaction, blhash common.Hash, blnum *big.Int, txi uint64) {
 	// Due to increasing return params and need to determine if this is from transaction pool or
 	// some chain, this probably needs to be refactored for more expressiveness
-	data, _ := self.backend.ChainDb().Get(common.FromHex(hash))
+	data, _ := self.backend.ExtraDb().Get(common.FromHex(hash))
 	if len(data) != 0 {
 		dtx := new(types.Transaction)
 		if err := rlp.DecodeBytes(data, dtx); err != nil {
@@ -329,7 +330,7 @@ func (self *XEth) EthTransactionByHash(hash string) (tx *types.Transaction, blha
 		Index      uint64
 	}
 
-	v, dberr := self.backend.ChainDb().Get(append(common.FromHex(hash), 0x0001))
+	v, dberr := self.backend.ExtraDb().Get(append(common.FromHex(hash), 0x0001))
 	// TODO check specifically for ErrNotFound
 	if dberr != nil {
 		return
@@ -364,7 +365,7 @@ func (self *XEth) GetBlockReceipts(bhash common.Hash) types.Receipts {
 }
 
 func (self *XEth) GetTxReceipt(txhash common.Hash) *types.Receipt {
-	return core.GetReceipt(self.backend.ChainDb(), txhash)
+	return core.GetReceipt(self.backend.ExtraDb(), txhash)
 }
 
 func (self *XEth) GasLimit() *big.Int {
@@ -407,13 +408,13 @@ func (self *XEth) SetSolc(solcPath string) (*compiler.Solidity, error) {
 
 // store DApp value in extra database
 func (self *XEth) DbPut(key, val []byte) bool {
-	self.backend.DappDb().Put(append(dappStorePre, key...), val)
+	self.backend.ExtraDb().Put(append(dappStorePre, key...), val)
 	return true
 }
 
 // retrieve DApp value from extra database
 func (self *XEth) DbGet(key []byte) ([]byte, error) {
-	val, err := self.backend.DappDb().Get(append(dappStorePre, key...))
+	val, err := self.backend.ExtraDb().Get(append(dappStorePre, key...))
 	return val, err
 }
 
@@ -822,22 +823,18 @@ func (self *XEth) Call(fromStr, toStr, valueStr, gasStr, gasPriceStr, dataStr st
 	}
 
 	from.SetBalance(common.MaxBig)
-	from.SetGasLimit(common.MaxBig)
-
+	from.SetGasLimit(self.backend.ChainManager().GasLimit())
 	msg := callmsg{
 		from:     from,
+		to:       common.HexToAddress(toStr),
 		gas:      common.Big(gasStr),
 		gasPrice: common.Big(gasPriceStr),
 		value:    common.Big(valueStr),
 		data:     common.FromHex(dataStr),
 	}
-	if len(toStr) > 0 {
-		addr := common.HexToAddress(toStr)
-		msg.to = &addr
-	}
 
 	if msg.gas.Cmp(big.NewInt(0)) == 0 {
-		msg.gas = big.NewInt(50000000)
+		msg.gas = DefaultGas()
 	}
 
 	if msg.gasPrice.Cmp(big.NewInt(0)) == 0 {
@@ -886,10 +883,6 @@ func (self *XEth) Sign(fromStr, hashStr string, didUnlock bool) (string, error) 
 
 func isAddress(addr string) bool {
 	return addrReg.MatchString(addr)
-}
-
-func (self *XEth) Frontend() Frontend {
-	return self.frontend
 }
 
 func (self *XEth) Transact(fromStr, toStr, nonceStr, valueStr, gasStr, gasPriceStr, codeStr string) (string, error) {
@@ -955,9 +948,8 @@ func (self *XEth) Transact(fromStr, toStr, nonceStr, valueStr, gasStr, gasPriceS
 		}
 	*/
 
-	self.transactMu.Lock()
-	defer self.transactMu.Unlock()
-
+	// TODO: align default values to have the same type, e.g. not depend on
+	// common.Value conversions later on
 	var nonce uint64
 	if len(nonceStr) != 0 {
 		nonce = common.Big(nonceStr).Uint64()
@@ -1002,7 +994,7 @@ func (self *XEth) sign(tx *types.Transaction, from common.Address, didUnlock boo
 // callmsg is the message type used for call transations.
 type callmsg struct {
 	from          *state.StateObject
-	to            *common.Address
+	to            common.Address
 	gas, gasPrice *big.Int
 	value         *big.Int
 	data          []byte
@@ -1011,7 +1003,7 @@ type callmsg struct {
 // accessor boilerplate to implement core.Message
 func (m callmsg) From() (common.Address, error) { return m.from.Address(), nil }
 func (m callmsg) Nonce() uint64                 { return m.from.Nonce() }
-func (m callmsg) To() *common.Address           { return m.to }
+func (m callmsg) To() *common.Address           { return &m.to }
 func (m callmsg) GasPrice() *big.Int            { return m.gasPrice }
 func (m callmsg) Gas() *big.Int                 { return m.gas }
 func (m callmsg) Value() *big.Int               { return m.value }

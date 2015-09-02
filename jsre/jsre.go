@@ -65,8 +65,8 @@ func New(assetPath string) *JSRE {
 	}
 	re.loopWg.Add(1)
 	go re.runEventLoop()
+	re.Compile("pp.js", pp_js) // load prettyprint func definition
 	re.Set("loadScript", re.loadScript)
-	re.Set("inspect", prettyPrintJS)
 	return re
 }
 
@@ -255,19 +255,35 @@ func (self *JSRE) loadScript(call otto.FunctionCall) otto.Value {
 	return otto.TrueValue()
 }
 
-// EvalAndPrettyPrint evaluates code and pretty prints the result to
-// standard output.
-func (self *JSRE) EvalAndPrettyPrint(code string) (err error) {
+// PrettyPrint writes v to standard output.
+func (self *JSRE) PrettyPrint(v interface{}) (val otto.Value, err error) {
+	var method otto.Value
 	self.do(func(vm *otto.Otto) {
-		var val otto.Value
-		val, err = vm.Run(code)
+		val, err = vm.ToValue(v)
 		if err != nil {
 			return
 		}
-		prettyPrint(vm, val)
-		fmt.Println()
+		method, err = vm.Get("prettyPrint")
+		if err != nil {
+			return
+		}
+		val, err = method.Call(method, val)
 	})
-	return err
+	return val, err
+}
+
+// Eval evaluates JS function and returns result in a pretty printed string format.
+func (self *JSRE) Eval(code string) (s string, err error) {
+	var val otto.Value
+	val, err = self.Run(code)
+	if err != nil {
+		return
+	}
+	val, err = self.PrettyPrint(val)
+	if err != nil {
+		return
+	}
+	return fmt.Sprintf("%v", val), nil
 }
 
 // Compile compiles and then runs a piece of JS code.

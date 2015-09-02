@@ -166,21 +166,16 @@ func GenerateChain(parent *types.Block, db common.Database, n int, gen func(int,
 }
 
 func makeHeader(parent *types.Block, state *state.StateDB) *types.Header {
-	var time *big.Int
-	if parent.Time() == nil {
-		time = big.NewInt(10)
-	} else {
-		time = new(big.Int).Add(parent.Time(), big.NewInt(9)) // block time is fixed at 9 seconds
-	}
+	time := parent.Time() + 9 // block time is fixed at 9 seconds
 	return &types.Header{
 		Root:       state.Root(),
 		ParentHash: parent.Hash(),
 		Coinbase:   parent.Coinbase(),
-		Difficulty: CalcDifficulty(time.Uint64(), new(big.Int).Sub(time, big.NewInt(10)).Uint64(), parent.Number(), parent.Difficulty()),
+		Difficulty: CalcDifficulty(time, parent.Time(), parent.Number(), parent.Difficulty()),
 		GasLimit:   CalcGasLimit(parent),
 		GasUsed:    new(big.Int),
 		Number:     new(big.Int).Add(parent.Number(), common.Big1),
-		Time:       time,
+		Time:       uint64(time),
 	}
 }
 
@@ -189,9 +184,9 @@ func makeHeader(parent *types.Block, state *state.StateDB) *types.Header {
 func newCanonical(n int, db common.Database) (*BlockProcessor, error) {
 	evmux := &event.TypeMux{}
 
-	WriteTestNetGenesisBlock(db, 0)
-	chainman, _ := NewChainManager(db, FakePow{}, evmux)
-	bman := NewBlockProcessor(db, FakePow{}, chainman, evmux)
+	WriteTestNetGenesisBlock(db, db, 0)
+	chainman, _ := NewChainManager(db, db, db, FakePow{}, evmux)
+	bman := NewBlockProcessor(db, db, FakePow{}, chainman, evmux)
 	bman.bc.SetProcessor(bman)
 	parent := bman.bc.CurrentBlock()
 	if n == 0 {

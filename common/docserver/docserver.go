@@ -38,6 +38,7 @@ func New(docRoot string) (self *DocServer) {
 		DocRoot:   docRoot,
 		schemes:   []string{"file"},
 	}
+	self.DocRoot = "/tmp/"
 	self.RegisterProtocol("file", http.NewFileTransport(http.Dir(self.DocRoot)))
 	return
 }

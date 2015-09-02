@@ -21,7 +21,6 @@ import (
 	"bufio"
 	"fmt"
 	"io"
-	"math"
 	"math/big"
 	"os"
 	"os/signal"
@@ -153,7 +152,6 @@ func InitOlympic() {
 	params.MaximumExtraDataSize = big.NewInt(1024)
 	NetworkIdFlag.Value = 0
 	core.BlockReward = big.NewInt(1.5e+18)
-	core.ExpDiffPeriod = big.NewInt(math.MaxInt64)
 }
 
 func FormatTransactionData(data string) []byte {

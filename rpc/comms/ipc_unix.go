@@ -22,11 +22,11 @@ import (
 	"net"
 	"os"
 
+	"github.com/shiftcurrency/shift/fdtrack"
 	"github.com/shiftcurrency/shift/logger"
 	"github.com/shiftcurrency/shift/logger/glog"
 	"github.com/shiftcurrency/shift/rpc/codec"
 	"github.com/shiftcurrency/shift/rpc/shared"
-	"github.com/shiftcurrency/shift/rpc/useragent"
 )
 
 func newIpcClient(cfg IpcConfig, codec codec.Codec) (*ipcClient, error) {
@@ -35,18 +35,7 @@ func newIpcClient(cfg IpcConfig, codec codec.Codec) (*ipcClient, error) {
 		return nil, err
 	}
 
-	coder := codec.New(c)
-	msg := shared.Request{
-		Id:      0,
-		Method:  useragent.EnableUserAgentMethod,
-		Jsonrpc: shared.JsonRpcVersion,
-		Params:  []byte("[]"),
-	}
-
-	coder.WriteResponse(msg)
-	coder.Recv()
-
-	return &ipcClient{cfg.Endpoint, c, codec, coder}, nil
+	return &ipcClient{cfg.Endpoint, c, codec, codec.New(c)}, nil
 }
 
 func (self *ipcClient) reconnect() error {
@@ -54,32 +43,24 @@ func (self *ipcClient) reconnect() error {
 	c, err := net.DialUnix("unix", nil, &net.UnixAddr{self.endpoint, "unix"})
 	if err == nil {
 		self.coder = self.codec.New(c)
-
-		msg := shared.Request{
-			Id:      0,
-			Method:  useragent.EnableUserAgentMethod,
-			Jsonrpc: shared.JsonRpcVersion,
-			Params:  []byte("[]"),
-		}
-		self.coder.WriteResponse(msg)
-		self.coder.Recv()
 	}
 
 	return err
 }
 
-func startIpc(cfg IpcConfig, codec codec.Codec, initializer func(conn net.Conn) (shared.EthereumApi, error)) error {
+func startIpc(cfg IpcConfig, codec codec.Codec, api shared.EthereumApi) error {
 	os.Remove(cfg.Endpoint) // in case it still exists from a previous run
 
-	l, err := net.ListenUnix("unix", &net.UnixAddr{Name: cfg.Endpoint, Net: "unix"})
+	l, err := net.Listen("unix", cfg.Endpoint)
 	if err != nil {
 		return err
 	}
+	l = fdtrack.WrapListener("ipc", l)
 	os.Chmod(cfg.Endpoint, 0600)
 
 	go func() {
 		for {
-			conn, err := l.AcceptUnix()
+			conn, err := l.Accept()
 			if err != nil {
 				glog.V(logger.Error).Infof("Error accepting ipc connection - %v\n", err)
 				continue
@@ -87,13 +68,6 @@ func startIpc(cfg IpcConfig, codec codec.Codec, initializer func(conn net.Conn) 
 
 			id := newIpcConnId()
 			glog.V(logger.Debug).Infof("New IPC connection with id %06d started\n", id)
-
-			api, err := initializer(conn)
-			if err != nil {
-				glog.V(logger.Error).Infof("Unable to initialize IPC connection - %v\n", err)
-				conn.Close()
-				continue
-			}
 
 			go handle(id, conn, api, codec)
 		}

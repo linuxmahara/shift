@@ -23,6 +23,7 @@ import (
 	"net"
 	"time"
 
+	"github.com/shiftcurrency/shift/fdtrack"
 	"github.com/shiftcurrency/shift/logger"
 	"github.com/shiftcurrency/shift/logger/glog"
 	"github.com/shiftcurrency/shift/p2p/discover"
@@ -212,6 +213,7 @@ func (t *dialTask) Do(srv *Server) {
 		glog.V(logger.Detail).Infof("dial error: %v", err)
 		return
 	}
+	fd = fdtrack.WrapConn("p2p", fd)
 	mfd := newMeteredConn(fd, false)
 
 	srv.setupConn(mfd, t.flags, t.dest)

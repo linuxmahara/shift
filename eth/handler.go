@@ -103,7 +103,7 @@ func NewProtocolManager(networkId int, mux *event.TypeMux, txpool txPool, pow po
 		version := ProtocolVersions[i]
 
 		manager.SubProtocols[i] = p2p.Protocol{
-			Name:    "shift",
+			Name:    "eth",
 			Version: version,
 			Length:  ProtocolLengths[i],
 			Run: func(p *p2p.Peer, rw p2p.MsgReadWriter) error {
@@ -117,7 +117,7 @@ func NewProtocolManager(networkId int, mux *event.TypeMux, txpool txPool, pow po
 	manager.downloader = downloader.New(manager.eventMux, manager.chainman.HasBlock, manager.chainman.GetBlock, manager.chainman.CurrentBlock, manager.chainman.InsertChain, manager.removePeer)
 
 	validator := func(block *types.Block, parent *types.Block) error {
-		return core.ValidateHeader(pow, block.Header(), parent, true, false)
+		return core.ValidateHeader(pow, block.Header(), parent, true)
 	}
 	heighter := func() uint64 {
 		return manager.chainman.CurrentBlock().NumberU64()
@@ -135,7 +135,7 @@ func (pm *ProtocolManager) removePeer(id string) {
 	}
 	glog.V(logger.Debug).Infoln("Removing peer", id)
 
-	// Unregister the peer from the downloader and Shift peer set
+	// Unregister the peer from the downloader and Ethereum peer set
 	pm.downloader.UnregisterPeer(id)
 	if err := pm.peers.Unregister(id); err != nil {
 		glog.V(logger.Error).Infoln("Removal failed:", err)
@@ -162,7 +162,7 @@ func (pm *ProtocolManager) Start() {
 func (pm *ProtocolManager) Stop() {
 	// Showing a log message. During download / process this could actually
 	// take between 5 to 10 seconds and therefor feedback is required.
-	glog.V(logger.Info).Infoln("Stopping Shift protocol handler...")
+	glog.V(logger.Info).Infoln("Stopping ethereum protocol handler...")
 
 	pm.quit = true
 	pm.txSub.Unsubscribe()         // quits txBroadcastLoop
@@ -172,7 +172,7 @@ func (pm *ProtocolManager) Stop() {
 	// Wait for any process action
 	pm.wg.Wait()
 
-	glog.V(logger.Info).Infoln("Shift protocol handler stopped")
+	glog.V(logger.Info).Infoln("Ethereum protocol handler stopped")
 }
 
 func (pm *ProtocolManager) newPeer(pv, nv int, p *p2p.Peer, rw p2p.MsgReadWriter) *peer {
@@ -184,7 +184,7 @@ func (pm *ProtocolManager) newPeer(pv, nv int, p *p2p.Peer, rw p2p.MsgReadWriter
 func (pm *ProtocolManager) handle(p *peer) error {
 	glog.V(logger.Debug).Infof("%v: peer connected [%s]", p, p.Name())
 
-	// Execute the Shift handshake
+	// Execute the Ethereum handshake
 	td, head, genesis := pm.chainman.Status()
 	if err := p.Handshake(td, head, genesis); err != nil {
 		glog.V(logger.Debug).Infof("%v: handshake failed: %v", p, err)
@@ -413,12 +413,10 @@ func (pm *ProtocolManager) handleMsg(p *peer) error {
 
 		pm.fetcher.Enqueue(p.id, request.Block)
 
-		// Update the peers total difficulty if needed, schedule a download if gapped
+		// TODO: Schedule a sync to cover potential gaps (this needs proto update)
 		if request.TD.Cmp(p.Td()) > 0 {
 			p.SetTd(request.TD)
-			if request.TD.Cmp(new(big.Int).Add(pm.chainman.Td(), request.Block.Difficulty())) > 0 {
-				go pm.synchronise(p)
-			}
+			go pm.synchronise(p)
 		}
 
 	case TxMsg:

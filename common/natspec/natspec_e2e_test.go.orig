@@ -7,15 +7,15 @@ import (
   "strings"
   "testing"
 
-  "github.com/shiftcurrency/shift/accounts"
-  "github.com/shiftcurrency/shift/common"
-  "github.com/shiftcurrency/shift/common/docserver"
-  "github.com/shiftcurrency/shift/common/registrar"
-  "github.com/shiftcurrency/shift/core"
-  "github.com/shiftcurrency/shift/core/state"
-  "github.com/shiftcurrency/shift/crypto"
-  "github.com/shiftcurrency/shift/eth"
-  xe "github.com/shiftcurrency/shift/xeth"
+  "github.com/ethereum/go-ethereum/accounts"
+  "github.com/ethereum/go-ethereum/common"
+  "github.com/ethereum/go-ethereum/common/docserver"
+  "github.com/ethereum/go-ethereum/common/registrar"
+  "github.com/ethereum/go-ethereum/core"
+  "github.com/ethereum/go-ethereum/core/state"
+  "github.com/ethereum/go-ethereum/crypto"
+  "github.com/ethereum/go-ethereum/eth"
+  xe "github.com/ethereum/go-ethereum/xeth"
 )
 
 const (

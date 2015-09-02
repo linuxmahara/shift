@@ -39,15 +39,15 @@ func (self StorageSize) Int64() int64 {
 
 // The different number of units
 var (
-	Xshf  = BigPow(10, 42)
-	Zshf  = BigPow(10, 21)
-	Eshf  = BigPow(10, 18)
-	Pshf  = BigPow(10, 15)
-	Tshf  = BigPow(10, 12)
-	Gshf  = BigPow(10, 9)
-	Mshf  = BigPow(10, 6)
-	Kshf  = BigPow(10, 3)
-	Shf   = big.NewInt(1)
+	Xshf = BigPow(10, 42)
+	Zshf = BigPow(10, 21)
+	Eshf = BigPow(10, 18)
+	Pshf = BigPow(10, 15)
+	Tshf = BigPow(10, 12)
+	Gshf = BigPow(10, 9)
+	Mshf = BigPow(10, 6)
+	Kshf = BigPow(10, 3)
+	Sht  = big.NewInt(1)
 )
 
 //
@@ -56,13 +56,13 @@ var (
 func CurrencyToString(num *big.Int) string {
 	var (
 		fin   *big.Int = num
-		denom string   = "Shf"
+		denom string   = "Sht"
 	)
 
 	switch {
 	case num.Cmp(Eshf) >= 0:
 		fin = new(big.Int).Div(num, Eshf)
-		denom = "Eshf"
+		denom = "Ether"
 	case num.Cmp(Pshf) >= 0:
 		fin = new(big.Int).Div(num, Pshf)
 		denom = "Pshf"

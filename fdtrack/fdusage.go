@@ -14,11 +14,16 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with the go-ethereum library. If not, see <http://www.gnu.org/licenses/>.
 
-// package user agent provides frontends and agents which can interact with the user
-package useragent
+// +build !linux,!darwin
 
-var (
-	AskPasswordMethod        = "agent_askPassword"
-	ConfirmTransactionMethod = "agent_confirmTransaction"
-	EnableUserAgentMethod    = "admin_enableUserAgent"
-)
+package fdtrack
+
+import "errors"
+
+func fdlimit() int {
+	return 0
+}
+
+func fdusage() (int, error) {
+	return 0, errors.New("not implemented")
+}

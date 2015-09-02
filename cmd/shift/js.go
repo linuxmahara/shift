@@ -145,15 +145,19 @@ func apiWordCompleter(line string, pos int) (head string, completions []string, 
 	return begin, completionWords, end
 }
 
-func newLightweightJSRE(libPath string, client comms.EthereumClient, interactive bool) *jsre {
+func newLightweightJSRE(libPath string, client comms.EthereumClient, interactive bool, f xeth.Frontend) *jsre {
 	js := &jsre{ps1: "> "}
 	js.wait = make(chan *big.Int)
 	js.client = client
 	js.ds = docserver.New("/")
 
+	if f == nil {
+		f = js
+	}
+
 	// update state in separare forever blocks
 	js.re = re.New(libPath)
-	if err := js.apiBindings(js); err != nil {
+	if err := js.apiBindings(f); err != nil {
 		utils.Fatalf("Unable to initialize console - %v", err)
 	}
 
@@ -228,10 +232,15 @@ func (self *jsre) loadAutoCompletion() {
 }
 
 func (self *jsre) batch(statement string) {
-	err := self.re.EvalAndPrettyPrint(statement)
+	val, err := self.re.Run(statement)
 
 	if err != nil {
 		fmt.Printf("error: %v", err)
+	} else if val.IsDefined() && val.IsObject() {
+		obj, _ := self.re.Get("ret_result")
+		fmt.Printf("%v", obj)
+	} else if val.IsDefined() {
+		fmt.Printf("%v", val)
 	}
 
 	if self.atexit != nil {
@@ -241,24 +250,23 @@ func (self *jsre) batch(statement string) {
 	self.re.Stop(false)
 }
 
-// show summary of current geth instance
 func (self *jsre) welcome() {
-	self.re.Run(`
-		(function () {
-			console.log('instance: ' + web3.version.client);
-			console.log(' datadir: ' + admin.datadir);
-			console.log("coinbase: " + eth.coinbase);
-			var ts = 1000 * eth.getBlock(eth.blockNumber).timestamp;
-			console.log("at block: " + eth.blockNumber + " (" + new Date(ts) + ")");
-		})();
-	`)
+	self.re.Eval(`console.log('instance: ' + web3.version.client);`)
+	self.re.Eval(`console.log(' datadir: ' + admin.datadir);`)
+	self.re.Eval(`console.log("coinbase: " + eth.coinbase);`)
+	self.re.Eval(`var lastBlockTimestamp = 1000 * eth.getBlock(eth.blockNumber).timestamp`)
+	self.re.Eval(`console.log("at block: " + eth.blockNumber + " (" + new Date(lastBlockTimestamp).toLocaleDateString()
+		+ " " + new Date(lastBlockTimestamp).toLocaleTimeString() + ")");`)
+
 	if modules, err := self.supportedApis(); err == nil {
 		loadedModules := make([]string, 0)
 		for api, version := range modules {
 			loadedModules = append(loadedModules, fmt.Sprintf("%s:%s", api, version))
 		}
 		sort.Strings(loadedModules)
-		fmt.Println("modules:", strings.Join(loadedModules, " "))
+
+		self.re.Eval(fmt.Sprintf("var modules = '%s';", strings.Join(loadedModules, " ")))
+		self.re.Eval(`console.log(" modules: " + modules);`)
 	}
 }
 
@@ -282,7 +290,7 @@ func (js *jsre) apiBindings(f xeth.Frontend) error {
 		utils.Fatalf("Unable to determine supported api's: %v", err)
 	}
 
-	jeth := rpc.NewJeth(api.Merge(apiImpl...), js.re, js.client, f)
+	jeth := rpc.NewJeth(api.Merge(apiImpl...), js.re, js.client)
 	js.re.Set("jeth", struct{}{})
 	t, _ := js.re.Get("jeth")
 	jethObj := t.Object()
@@ -300,12 +308,12 @@ func (js *jsre) apiBindings(f xeth.Frontend) error {
 		utils.Fatalf("Error loading web3.js: %v", err)
 	}
 
-	_, err = js.re.Run("var web3 = require('web3');")
+	_, err = js.re.Eval("var web3 = require('web3');")
 	if err != nil {
 		utils.Fatalf("Error requiring web3: %v", err)
 	}
 
-	_, err = js.re.Run("web3.setProvider(jeth)")
+	_, err = js.re.Eval("web3.setProvider(jeth)")
 	if err != nil {
 		utils.Fatalf("Error setting web3 provider: %v", err)
 	}
@@ -324,13 +332,13 @@ func (js *jsre) apiBindings(f xeth.Frontend) error {
 		}
 	}
 
-	_, err = js.re.Run(shortcuts)
+	_, err = js.re.Eval(shortcuts)
 
 	if err != nil {
 		utils.Fatalf("Error setting namespaces: %v", err)
 	}
 
-	js.re.Run(`var GlobalRegistrar = eth.contract(` + registrar.GlobalRegistrarAbi + `);	 registrar = GlobalRegistrar.at("` + registrar.GlobalRegistrarAddr + `");`)
+	js.re.Eval(`var GlobalRegistrar = eth.contract(` + registrar.GlobalRegistrarAbi + `);	 registrar = GlobalRegistrar.at("` + registrar.GlobalRegistrarAddr + `");`)
 	return nil
 }
 
@@ -378,11 +386,6 @@ func (self *jsre) interactive() {
 		for {
 			line, err := self.Prompt(<-prompt)
 			if err != nil {
-				if err == liner.ErrPromptAborted { // ctrl-C
-					self.resetPrompt()
-					inputln <- ""
-					continue
-				}
 				return
 			}
 			inputln <- line
@@ -454,7 +457,8 @@ func (self *jsre) parseInput(code string) {
 			fmt.Println("[native] error", r)
 		}
 	}()
-	if err := self.re.EvalAndPrettyPrint(code); err != nil {
+	value, err := self.re.Run(code)
+	if err != nil {
 		if ottoErr, ok := err.(*otto.Error); ok {
 			fmt.Println(ottoErr.String())
 		} else {
@@ -462,16 +466,11 @@ func (self *jsre) parseInput(code string) {
 		}
 		return
 	}
+	self.printValue(value)
 }
 
 var indentCount = 0
 var str = ""
-
-func (self *jsre) resetPrompt() {
-	indentCount = 0
-	str = ""
-	self.ps1 = "> "
-}
 
 func (self *jsre) setIndent() {
 	open := strings.Count(str, "{")
@@ -484,5 +483,12 @@ func (self *jsre) setIndent() {
 	} else {
 		self.ps1 = strings.Join(make([]string, indentCount*2), "..")
 		self.ps1 += " "
+	}
+}
+
+func (self *jsre) printValue(v interface{}) {
+	val, err := self.re.PrettyPrint(v)
+	if err == nil {
+		fmt.Printf("%v", val)
 	}
 }

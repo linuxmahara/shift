@@ -21,7 +21,7 @@ import (
 	"fmt"
 	"os"
 	"os/user"
-	"path"
+	"path/filepath"
 	"strings"
 
 	"github.com/codegangsta/cli"
@@ -44,7 +44,7 @@ func (self *DirectoryString) Set(value string) error {
 }
 
 // Custom cli.Flag type which expand the received string to an absolute path.
-// e.g. ~/.ethereum -> /home/username/.ethereum
+// e.g. ~/.Shift -> /home/username/.Shift
 type DirectoryFlag struct {
 	cli.GenericFlag
 	Name   string
@@ -138,8 +138,11 @@ func (self *DirectoryFlag) Set(value string) {
 func expandPath(p string) string {
 	if strings.HasPrefix(p, "~/") || strings.HasPrefix(p, "~\\") {
 		if user, err := user.Current(); err == nil {
-			p = user.HomeDir + p[1:]
+			if err == nil {
+				p = strings.Replace(p, "~", user.HomeDir, 1)
+			}
 		}
 	}
-	return path.Clean(os.ExpandEnv(p))
+
+	return filepath.Clean(os.ExpandEnv(p))
 }

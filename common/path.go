@@ -68,7 +68,7 @@ func AbsolutePath(Datadir string, filename string) string {
 func DefaultAssetPath() string {
 	var assetPath string
 	pwd, _ := os.Getwd()
-	srcdir := filepath.Join(os.Getenv("GOPATH"), "src", "github.com", "shiftcurrency", "shift", "cmd", "mist")
+	srcdir := filepath.Join(os.Getenv("GOPATH"), "src", "github.com", "ethereum", "go-ethereum", "cmd", "mist")
 
 	// If the current working directory is the go-ethereum dir
 	// assume a debug build and use the source directory as
@@ -115,4 +115,15 @@ func DefaultIpcPath() string {
 		return `\\.\pipe\shf.ipc`
 	}
 	return filepath.Join(DefaultDataDir(), "shf.ipc")
+}
+
+func IsWindows() bool {
+	return runtime.GOOS == "windows"
+}
+
+func WindonizePath(path string) string {
+	if string(path[0]) == "/" && IsWindows() {
+		path = path[1:]
+	}
+	return path
 }

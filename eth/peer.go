@@ -242,7 +242,7 @@ func (p *peer) Handshake(td *big.Int, head common.Hash, genesis common.Hash) err
 // String implements fmt.Stringer.
 func (p *peer) String() string {
 	return fmt.Sprintf("Peer %s [%s]", p.id,
-		fmt.Sprintf("shift/%2d", p.version),
+		fmt.Sprintf("eth/%2d", p.version),
 	)
 }
 

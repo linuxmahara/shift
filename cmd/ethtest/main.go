@@ -26,7 +26,6 @@ import (
 	"strings"
 
 	"github.com/codegangsta/cli"
-	"github.com/shiftcurrency/shift/core/vm"
 	"github.com/shiftcurrency/shift/logger/glog"
 	"github.com/shiftcurrency/shift/tests"
 )
@@ -62,10 +61,6 @@ var (
 	SkipTestsFlag = cli.StringFlag{
 		Name:  "skip",
 		Usage: "Tests names to skip",
-	}
-	TraceFlag = cli.BoolFlag{
-		Name:  "trace",
-		Usage: "Enable VM tracing",
 	}
 )
 
@@ -178,6 +173,7 @@ func runSuite(test, file string) {
 					glog.Fatalln(err)
 				}
 			}
+
 		}
 	}
 }
@@ -188,7 +184,6 @@ func setupApp(c *cli.Context) {
 	continueOnError = c.GlobalBool(ContinueOnErrorFlag.Name)
 	useStdIn := c.GlobalBool(ReadStdInFlag.Name)
 	skipTests = strings.Split(c.GlobalString(SkipTestsFlag.Name), " ")
-	vm.Debug = c.GlobalBool(TraceFlag.Name)
 
 	if !useStdIn {
 		runSuite(flagTest, flagFile)
@@ -204,8 +199,8 @@ func main() {
 	glog.SetToStderr(true)
 
 	app := cli.NewApp()
-	app.Name = "shftest"
-	app.Usage = "shift test interface"
+	app.Name = "ethtest"
+	app.Usage = "go-ethereum test interface"
 	app.Action = setupApp
 	app.Version = "0.2.0"
 	app.Author = "go-ethereum team"
@@ -216,7 +211,6 @@ func main() {
 		ContinueOnErrorFlag,
 		ReadStdInFlag,
 		SkipTestsFlag,
-		TraceFlag,
 	}
 
 	if err := app.Run(os.Args); err != nil {

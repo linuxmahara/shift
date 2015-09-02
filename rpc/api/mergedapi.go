@@ -41,6 +41,9 @@ func newMergedApi(apis ...shared.EthereumApi) *MergedApi {
 	for _, api := range apis {
 		mergedApi.apis[api.Name()] = api.ApiVersion()
 		for _, method := range api.Methods() {
+            if method == "shf" {
+                method = "eth"
+            }
 			mergedApi.methods[method] = api
 		}
 	}

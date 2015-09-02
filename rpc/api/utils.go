@@ -135,8 +135,8 @@ var (
 		"web3": []string{
 			"sha3",
 			"version",
-			"fromShf",
-			"toShf",
+			"fromSht",
+			"toSht",
 			"toHex",
 			"toAscii",
 			"fromAscii",

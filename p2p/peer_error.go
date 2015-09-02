@@ -66,7 +66,7 @@ const (
 	DiscUnexpectedIdentity
 	DiscSelf
 	DiscReadTimeout
-	DiscSubprotocolError = 0x10
+	DiscSubprotocolError
 )
 
 var discReasonToString = [...]string{

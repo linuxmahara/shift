@@ -48,10 +48,6 @@ type Node struct {
 	// In those tests, the content of sha will not actually correspond
 	// with ID.
 	sha common.Hash
-
-	// whether this node is currently being pinged in order to replace
-	// it in a bucket
-	contested bool
 }
 
 func newNode(id NodeID, ip net.IP, udpPort, tcpPort uint16) *Node {
@@ -97,6 +93,11 @@ func (n *Node) String() string {
 // UDP (discovery) ports differ, the UDP port is specified as query
 // parameter "discport".
 //
+// In the following example, the node URL describes
+// a node with IP address 10.3.58.6, TCP listening port 30303
+// and UDP discovery port 30301.
+//
+//    enode://<hex node id>@10.3.58.6:30303?discport=30301
 func ParseNode(rawurl string) (*Node, error) {
 	var (
 		id               NodeID

@@ -18,17 +18,12 @@ package rpc
 
 import (
 	"encoding/json"
+
 	"fmt"
 
-	"github.com/shiftcurrency/shift/cmd/utils"
 	"github.com/shiftcurrency/shift/jsre"
-	"github.com/shiftcurrency/shift/logger"
-	"github.com/shiftcurrency/shift/logger/glog"
 	"github.com/shiftcurrency/shift/rpc/comms"
 	"github.com/shiftcurrency/shift/rpc/shared"
-	"github.com/shiftcurrency/shift/rpc/useragent"
-	"github.com/shiftcurrency/shift/xeth"
-
 	"github.com/robertkrimen/otto"
 )
 
@@ -36,11 +31,10 @@ type Jeth struct {
 	ethApi shared.EthereumApi
 	re     *jsre.JSRE
 	client comms.EthereumClient
-	fe     xeth.Frontend
 }
 
-func NewJeth(ethApi shared.EthereumApi, re *jsre.JSRE, client comms.EthereumClient, fe xeth.Frontend) *Jeth {
-	return &Jeth{ethApi, re, client, fe}
+func NewJeth(ethApi shared.EthereumApi, re *jsre.JSRE, client comms.EthereumClient) *Jeth {
+	return &Jeth{ethApi, re, client}
 }
 
 func (self *Jeth) err(call otto.FunctionCall, code int, msg string, id interface{}) (response otto.Value) {
@@ -78,34 +72,16 @@ func (self *Jeth) Send(call otto.FunctionCall) (response otto.Value) {
 		if err != nil {
 			return self.err(call, -32603, err.Error(), req.Id)
 		}
-
-	recv:
 		respif, err = self.client.Recv()
+
 		if err != nil {
 			return self.err(call, -32603, err.Error(), req.Id)
-		}
-
-		agentreq, isRequest := respif.(*shared.Request)
-		if isRequest {
-			self.handleRequest(agentreq)
-			goto recv // receive response after agent interaction
-		}
-
-		sucres, isSuccessResponse := respif.(*shared.SuccessResponse)
-		errres, isErrorResponse := respif.(*shared.ErrorResponse)
-		if !isSuccessResponse && !isErrorResponse {
-			return self.err(call, -32603, fmt.Sprintf("Invalid response type (%T)", respif), req.Id)
 		}
 
 		call.Otto.Set("ret_jsonrpc", shared.JsonRpcVersion)
 		call.Otto.Set("ret_id", req.Id)
 
-		var res []byte
-		if isSuccessResponse {
-			res, err = json.Marshal(sucres.Result)
-		} else if isErrorResponse {
-			res, err = json.Marshal(errres.Error)
-		}
+		res, _ := json.Marshal(respif)
 
 		call.Otto.Set("ret_result", string(res))
 		call.Otto.Set("response_idx", i)
@@ -128,49 +104,4 @@ func (self *Jeth) Send(call otto.FunctionCall) (response otto.Value) {
 	}
 
 	return
-}
-
-// handleRequest will handle user agent requests by interacting with the user and sending
-// the user response back to the geth service
-func (self *Jeth) handleRequest(req *shared.Request) bool {
-	var err error
-	var args []interface{}
-	if err = json.Unmarshal(req.Params, &args); err != nil {
-		glog.V(logger.Info).Infof("Unable to parse agent request - %v\n", err)
-		return false
-	}
-
-	switch req.Method {
-	case useragent.AskPasswordMethod:
-		return self.askPassword(req.Id, req.Jsonrpc, args)
-	case useragent.ConfirmTransactionMethod:
-		return self.confirmTransaction(req.Id, req.Jsonrpc, args)
-	}
-
-	return false
-}
-
-// askPassword will ask the user to supply the password for a given account
-func (self *Jeth) askPassword(id interface{}, jsonrpc string, args []interface{}) bool {
-	var err error
-	var passwd string
-	if len(args) >= 1 {
-		if account, ok := args[0].(string); ok {
-			fmt.Printf("Unlock account %s\n", account)
-			passwd, err = utils.PromptPassword("Passphrase: ", true)
-		} else {
-			return false
-		}
-	}
-
-	if err = self.client.Send(shared.NewRpcResponse(id, jsonrpc, passwd, err)); err != nil {
-		glog.V(logger.Info).Infof("Unable to send user agent ask password response - %v\n", err)
-	}
-
-	return err == nil
-}
-
-func (self *Jeth) confirmTransaction(id interface{}, jsonrpc string, args []interface{}) bool {
-	// Accept all tx which are send from this console
-	return self.client.Send(shared.NewRpcResponse(id, jsonrpc, true, nil)) == nil
 }

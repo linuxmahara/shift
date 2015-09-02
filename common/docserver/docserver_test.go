@@ -20,7 +20,6 @@ import (
 	"io/ioutil"
 	"net/http"
 	"os"
-	"path"
 	"testing"
 
 	"github.com/shiftcurrency/shift/common"
@@ -28,18 +27,12 @@ import (
 )
 
 func TestGetAuthContent(t *testing.T) {
-	dir, err := ioutil.TempDir("", "docserver-test")
-	if err != nil {
-		t.Fatal("cannot create temporary directory:", err)
-	}
-	defer os.RemoveAll(dir)
-	ds := New(dir)
-
 	text := "test"
-	hash := crypto.Sha3Hash([]byte(text))
-	if err := ioutil.WriteFile(path.Join(dir, "test.content"), []byte(text), os.ModePerm); err != nil {
-		t.Fatal("could not write test file", err)
-	}
+	hash := common.Hash{}
+	copy(hash[:], crypto.Sha3([]byte(text)))
+	ioutil.WriteFile("/tmp/test.content", []byte(text), os.ModePerm)
+
+	ds := New("/tmp/")
 	content, err := ds.GetAuthContent("file:///test.content", hash)
 	if err != nil {
 		t.Errorf("no error expected, got %v", err)

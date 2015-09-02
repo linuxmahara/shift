@@ -20,7 +20,6 @@ import (
 	"encoding/json"
 	"io/ioutil"
 	"os"
-	"path"
 	"testing"
 
 	"github.com/shiftcurrency/shift/common"
@@ -95,7 +94,7 @@ func TestSaveInfo(t *testing.T) {
 	if err != nil {
 		t.Errorf("%v", err)
 	}
-	filename := path.Join(os.TempDir(), "solctest.info.json")
+	filename := "/tmp/solctest.info.json"
 	os.Remove(filename)
 	cinfohash, err := SaveInfo(&cinfo, filename)
 	if err != nil {

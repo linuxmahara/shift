@@ -74,10 +74,10 @@ func importChain(ctx *cli.Context) {
 	if len(ctx.Args()) != 1 {
 		utils.Fatalf("This command requires an argument.")
 	}
-	chain, chainDb := utils.MakeChain(ctx)
+	chain, blockDB, stateDB, extraDB := utils.MakeChain(ctx)
 	start := time.Now()
 	err := utils.ImportChain(chain, ctx.Args().First())
-	chainDb.Close()
+	closeAll(blockDB, stateDB, extraDB)
 	if err != nil {
 		utils.Fatalf("Import error: %v", err)
 	}
@@ -88,7 +88,7 @@ func exportChain(ctx *cli.Context) {
 	if len(ctx.Args()) < 1 {
 		utils.Fatalf("This command requires an argument.")
 	}
-	chain, _ := utils.MakeChain(ctx)
+	chain, _, _, _ := utils.MakeChain(ctx)
 	start := time.Now()
 
 	var err error
@@ -115,16 +115,17 @@ func exportChain(ctx *cli.Context) {
 }
 
 func removeDB(ctx *cli.Context) {
-	confirm, err := utils.PromptConfirm("Remove local database?")
+	confirm, err := utils.PromptConfirm("Remove local databases?")
 	if err != nil {
 		utils.Fatalf("%v", err)
 	}
 
 	if confirm {
-		fmt.Println("Removing chaindata...")
+		fmt.Println("Removing chain and state databases...")
 		start := time.Now()
 
-		os.RemoveAll(filepath.Join(ctx.GlobalString(utils.DataDirFlag.Name), "chaindata"))
+		os.RemoveAll(filepath.Join(ctx.GlobalString(utils.DataDirFlag.Name), "blockchain"))
+		os.RemoveAll(filepath.Join(ctx.GlobalString(utils.DataDirFlag.Name), "state"))
 
 		fmt.Printf("Removed in %v\n", time.Since(start))
 	} else {
@@ -135,8 +136,8 @@ func removeDB(ctx *cli.Context) {
 func upgradeDB(ctx *cli.Context) {
 	glog.Infoln("Upgrading blockchain database")
 
-	chain, chainDb := utils.MakeChain(ctx)
-	v, _ := chainDb.Get([]byte("BlockchainVersion"))
+	chain, blockDB, stateDB, extraDB := utils.MakeChain(ctx)
+	v, _ := blockDB.Get([]byte("BlockchainVersion"))
 	bcVersion := int(common.NewValue(v).Uint())
 	if bcVersion == 0 {
 		bcVersion = core.BlockChainVersion
@@ -148,14 +149,15 @@ func upgradeDB(ctx *cli.Context) {
 	if err := utils.ExportChain(chain, exportFile); err != nil {
 		utils.Fatalf("Unable to export chain for reimport %s", err)
 	}
-	chainDb.Close()
-	os.RemoveAll(filepath.Join(ctx.GlobalString(utils.DataDirFlag.Name), "chaindata"))
+	closeAll(blockDB, stateDB, extraDB)
+	os.RemoveAll(filepath.Join(ctx.GlobalString(utils.DataDirFlag.Name), "blockchain"))
+	os.RemoveAll(filepath.Join(ctx.GlobalString(utils.DataDirFlag.Name), "state"))
 
 	// Import the chain file.
-	chain, chainDb = utils.MakeChain(ctx)
-	chainDb.Put([]byte("BlockchainVersion"), common.NewValue(core.BlockChainVersion).Bytes())
+	chain, blockDB, stateDB, extraDB = utils.MakeChain(ctx)
+	blockDB.Put([]byte("BlockchainVersion"), common.NewValue(core.BlockChainVersion).Bytes())
 	err := utils.ImportChain(chain, exportFile)
-	chainDb.Close()
+	closeAll(blockDB, stateDB, extraDB)
 	if err != nil {
 		utils.Fatalf("Import error %v (a backup is made in %s, use the import command to import it)", err, exportFile)
 	} else {
@@ -165,7 +167,7 @@ func upgradeDB(ctx *cli.Context) {
 }
 
 func dump(ctx *cli.Context) {
-	chain, chainDb := utils.MakeChain(ctx)
+	chain, _, stateDB, _ := utils.MakeChain(ctx)
 	for _, arg := range ctx.Args() {
 		var block *types.Block
 		if hashish(arg) {
@@ -178,11 +180,10 @@ func dump(ctx *cli.Context) {
 			fmt.Println("{}")
 			utils.Fatalf("block not found")
 		} else {
-			state := state.New(block.Root(), chainDb)
+			state := state.New(block.Root(), stateDB)
 			fmt.Printf("%s\n", state.Dump())
 		}
 	}
-	chainDb.Close()
 }
 
 // hashish returns true for strings that look like hashes.

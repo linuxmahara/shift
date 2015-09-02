@@ -669,14 +669,15 @@ module.exports = {
 var BigNumber = require('bignumber.js');
 
 var ETH_UNITS = [
-    'shf',
-    'Kshf',
-    'Mshf',
-    'gshf',
-    'Tshf',
-    'Pshf',
+    'Xshf',
+    'Zshf',
     'Eshf',
-
+    'Pshf',
+    'Tshf',
+    'Gshf',
+    'Mshf',
+    'Kshf',
+    'Sht'
 ];
 
 module.exports = {
@@ -728,13 +729,22 @@ module.exports = {
 var BigNumber = require('bignumber.js');
 
 var unitMap = {
-    'Shf':      '1',
-    'Kshf':     '1000',
-    'Mshf':     '1000000',
-    'Gshf':     '1000000000',
-    'Tshf':     '1000000000000',
-    'Pshf':     '1000000000000000',
-    'Eshf':     '1000000000000000000',
+    'wei':      '1',
+    'kwei':     '1000',
+    'ada':      '1000',
+    'mwei':     '1000000',
+    'babbage':  '1000000',
+    'gwei':     '1000000000',
+    'shannon':  '1000000000',
+    'szabo':    '1000000000000',
+    'finney':   '1000000000000000',
+    'ether':    '1000000000000000000',
+    'kether':   '1000000000000000000000',
+    'grand':    '1000000000000000000000',
+    'einstein': '1000000000000000000000',
+    'mether':   '1000000000000000000000000',
+    'gether':   '1000000000000000000000000000',
+    'tether':   '1000000000000000000000000000000'
 };
 
 /**
@@ -902,15 +912,15 @@ var toHex = function (val) {
 };
 
 /**
- * Returns value of unit in Shf
+ * Returns value of unit in Sht
  *
  * @method getValueOfUnit
- * @param {String} unit the unit to convert to, default shf
- * @returns {BigNumber} value of the unit (in Shf)
+ * @param {String} unit the unit to convert to, default ether
+ * @returns {BigNumber} value of the unit (in Sht)
  * @throws error if the unit is not correct:w
  */
 var getValueOfUnit = function (unit) {
-    unit = unit ? unit.toLowerCase() : 'shf';
+    unit = unit ? unit.toLowerCase() : 'ether';
     var unitValue = unitMap[unit];
     if (unitValue === undefined) {
         throw new Error('This unit doesn\'t exists, please use the one of the following units' + JSON.stringify(unitMap, null, 2));
@@ -919,46 +929,52 @@ var getValueOfUnit = function (unit) {
 };
 
 /**
- * Takes a number of shf and converts it to any other shift unit.
+ * Takes a number of wei and converts it to any other ether unit.
  *
  * Possible units are:
- *    'Shf',
- *    'Kshf',
- *    'Mshf',
- *    'Gshf',
- *    'Tshf',
- *    'Pshf',
- *    'Eshf',
+ * - kwei/ada
+ * - mwei/babbage
+ * - gwei/shannon
+ * - szabo
+ * - finney
+ * - ether
+ * - kether/grand/einstein
+ * - mether
+ * - gether
+ * - tether
  *
- *
- * @method fromShf
+ * @method fromSht
  * @param {Number|String} number can be a number, number string or a HEX of a decimal
- * @param {String} unit the unit to convert to, default shf
+ * @param {String} unit the unit to convert to, default ether
  * @return {String|Object} When given a BigNumber object it returns one as well, otherwise a number
 */
-var fromShf = function(number, unit) {
+var fromSht = function(number, unit) {
     var returnValue = toBigNumber(number).dividedBy(getValueOfUnit(unit));
 
     return isBigNumber(number) ? returnValue : returnValue.toString(10); 
 };
 
 /**
- * Takes a number of a unit and converts it to shf.
+ * Takes a number of a unit and converts it to wei.
  *
  * Possible units are:
- *    'Kshf',
- *    'Mshf',
- *    'Gshf',
- *    'Tshf',
- *    'Pshf',
- *    'Eshf',
+ * - kwei/ada
+ * - mwei/babbage
+ * - gwei/shannon
+ * - szabo
+ * - finney
+ * - ether
+ * - kether/grand/einstein
+ * - mether
+ * - gether
+ * - tether
  *
- * @method toShf
+ * @method toSht
  * @param {Number|String|BigNumber} number can be a number, number string or a HEX of a decimal
- * @param {String} unit the unit to convert from, default shf
+ * @param {String} unit the unit to convert from, default ether
  * @return {String|Object} When given a BigNumber object it returns one as well, otherwise a number
 */
-var toShf = function(number, unit) {
+var toSht = function(number, unit) {
     var returnValue = toBigNumber(number).times(getValueOfUnit(unit));
 
     return isBigNumber(number) ? returnValue : returnValue.toString(10); 
@@ -1133,8 +1149,8 @@ module.exports = {
     fromAscii: fromAscii,
     extractDisplayName: extractDisplayName,
     extractTypeName: extractTypeName,
-    toShf: toShf,
-    fromShf: fromShf,
+    toSht: toSht,
+    fromSht: fromSht,
     toBigNumber: toBigNumber,
     toTwosComplement: toTwosComplement,
     toAddress: toAddress,

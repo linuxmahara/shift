@@ -29,6 +29,7 @@ import (
 	"io"
 	"io/ioutil"
 
+	"github.com/shiftcurrency/shift/fdtrack"
 	"github.com/shiftcurrency/shift/logger"
 	"github.com/shiftcurrency/shift/logger/glog"
 	"github.com/shiftcurrency/shift/rpc/codec"
@@ -177,6 +178,7 @@ func listenHTTP(addr string, h http.Handler) (*stopServer, error) {
 	if err != nil {
 		return nil, err
 	}
+	l = fdtrack.WrapListener("rpc", l)
 	s := &stopServer{l: l, idle: make(map[net.Conn]struct{})}
 	s.Server = &http.Server{
 		Addr:         addr,

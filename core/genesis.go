@@ -33,7 +33,7 @@ import (
 )
 
 // WriteGenesisBlock writes the genesis block to the database as block number 0
-func WriteGenesisBlock(chainDb common.Database, reader io.Reader) (*types.Block, error) {
+func WriteGenesisBlock(stateDb, blockDb common.Database, reader io.Reader) (*types.Block, error) {
 	contents, err := ioutil.ReadAll(reader)
 	if err != nil {
 		return nil, err
@@ -59,7 +59,7 @@ func WriteGenesisBlock(chainDb common.Database, reader io.Reader) (*types.Block,
 		return nil, err
 	}
 
-	statedb := state.New(common.Hash{}, chainDb)
+	statedb := state.New(common.Hash{}, stateDb)
 	for addr, account := range genesis.Alloc {
 		address := common.HexToAddress(addr)
 		statedb.AddBalance(address, common.String2Big(account.Balance))
@@ -73,7 +73,7 @@ func WriteGenesisBlock(chainDb common.Database, reader io.Reader) (*types.Block,
 	difficulty := common.String2Big(genesis.Difficulty)
 	block := types.NewBlock(&types.Header{
 		Nonce:      types.EncodeNonce(common.String2Big(genesis.Nonce).Uint64()),
-		Time:       common.String2Big(genesis.Timestamp),
+		Time:       common.String2Big(genesis.Timestamp).Uint64(),
 		ParentHash: common.HexToHash(genesis.ParentHash),
 		Extra:      common.FromHex(genesis.ExtraData),
 		GasLimit:   common.String2Big(genesis.GasLimit),
@@ -84,9 +84,9 @@ func WriteGenesisBlock(chainDb common.Database, reader io.Reader) (*types.Block,
 	}, nil, nil, nil)
 	block.Td = difficulty
 
-	if block := GetBlockByHash(chainDb, block.Hash()); block != nil {
+	if block := GetBlockByHash(blockDb, block.Hash()); block != nil {
 		glog.V(logger.Info).Infoln("Genesis block already in chain. Writing canonical number")
-		err := WriteCanonNumber(chainDb, block)
+		err := WriteCanonNumber(blockDb, block)
 		if err != nil {
 			return nil, err
 		}
@@ -95,11 +95,11 @@ func WriteGenesisBlock(chainDb common.Database, reader io.Reader) (*types.Block,
 
 	statedb.Sync()
 
-	err = WriteBlock(chainDb, block)
+	err = WriteBlock(blockDb, block)
 	if err != nil {
 		return nil, err
 	}
-	err = WriteHead(chainDb, block)
+	err = WriteHead(blockDb, block)
 	if err != nil {
 		return nil, err
 	}
@@ -133,11 +133,11 @@ func WriteGenesisBlockForTesting(db common.Database, addr common.Address, balanc
 		"0x%x":{"balance":"0x%x"}
 	}
 }`, types.EncodeNonce(0), params.GenesisGasLimit.Bytes(), params.GenesisDifficulty.Bytes(), addr, balance.Bytes())
-	block, _ := WriteGenesisBlock(db, strings.NewReader(testGenesis))
+	block, _ := WriteGenesisBlock(db, db, strings.NewReader(testGenesis))
 	return block
 }
 
-func WriteTestNetGenesisBlock(chainDb common.Database, nonce uint64) (*types.Block, error) {
+func WriteTestNetGenesisBlock(stateDb, blockDb common.Database, nonce uint64) (*types.Block, error) {
 	testGenesis := fmt.Sprintf(`{
 	"nonce":"0x%x",
 	"gasLimit":"0x%x",
@@ -157,5 +157,5 @@ func WriteTestNetGenesisBlock(chainDb common.Database, nonce uint64) (*types.Blo
 		"1a26338f0d905e295fccb71fa9ea849ffa12aaf4": {"balance": "1606938044258990275541962092341162602522202993782792835301376"}
 	}
 }`, types.EncodeNonce(nonce), params.GenesisGasLimit.Bytes(), params.GenesisDifficulty.Bytes())
-	return WriteGenesisBlock(chainDb, strings.NewReader(testGenesis))
+	return WriteGenesisBlock(stateDb, blockDb, strings.NewReader(testGenesis))
 }

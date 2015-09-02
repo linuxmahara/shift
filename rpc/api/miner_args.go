@@ -110,12 +110,12 @@ func (args *SetEtherbaseArgs) UnmarshalJSON(b []byte) (err error) {
 	if addr, ok := obj[0].(string); ok {
 		args.Etherbase = common.HexToAddress(addr)
 		if (args.Etherbase == common.Address{}) {
-			return shared.NewInvalidTypeError("Shiftbase", "not a valid address")
+			return shared.NewInvalidTypeError("Etherbase", "not a valid address")
 		}
 		return nil
 	}
 
-	return shared.NewInvalidTypeError("Shiftbase", "not a string")
+	return shared.NewInvalidTypeError("Etherbase", "not a string")
 }
 
 type MakeDAGArgs struct {
