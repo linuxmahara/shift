@@ -83,7 +83,7 @@ func (v vectorSummer) Sum(i int) *big.Int { return v.by(v.vectors[i]) }
 
 func GasSum(v Vector) *big.Int { return v.Gas }
 
-var EtherInSht = new(big.Rat).SetInt(common.String2Big("1000000000000000000"))
+var shiftInEshf = new(big.Rat).SetInt(common.String2Big("1000000000000000000"))
 
 func GasPrice(bp, gl, ep *big.Int) *big.Int {
 	BP := new(big.Rat).SetInt(bp)
@@ -92,5 +92,5 @@ func GasPrice(bp, gl, ep *big.Int) *big.Int {
 	GP := new(big.Rat).Quo(BP, GL)
 	GP = GP.Quo(GP, EP)
 
-	return GP.Mul(GP, EtherInSht).Num()
+	return GP.Mul(GP, shiftInEshf).Num()
 }

@@ -53,7 +53,7 @@ var (
 	monitorCommand = cli.Command{
 		Action: monitor,
 		Name:   "monitor",
-		Usage:  `Sht Monitor: node metrics monitoring and visualization`,
+		Usage:  `Shift Monitor: node metrics monitoring and visualization`,
 		Description: `
 The Shift monitor is a tool to collect and visualize various internal metrics
 gathered by the node, supporting different chart types as well as the capacity
@@ -73,7 +73,7 @@ func monitor(ctx *cli.Context) {
 		client comms.EthereumClient
 		err    error
 	)
-	// Attach to an Ethereum node over IPC or RPC
+	// Attach to an Shift node over IPC or RPC
 	endpoint := ctx.String(monitorCommandAttachFlag.Name)
 	if client, err = comms.ClientFromEndpoint(endpoint, codec.JSON); err != nil {
 		utils.Fatalf("Unable to attach to shift node: %v", err)
@@ -162,6 +162,8 @@ func monitor(ctx *cli.Context) {
 	}
 }
 
+// retrieveMetrics contacts the attached shift node and retrieves the entire set
+// of collected system metrics.
 func retrieveMetrics(xeth *rpc.Xeth) (map[string]interface{}, error) {
 	return xeth.Call("debug_metrics", []interface{}{true})
 }

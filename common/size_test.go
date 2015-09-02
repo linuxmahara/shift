@@ -40,20 +40,20 @@ func (s *SizeSuite) TestStorageSizeString(c *checker.C) {
 	c.Assert(StorageSize(data3).String(), checker.Equals, exp3)
 }
 
-func (s *CommonSuite) TestCommon(c *checker.C) {
-	ether := CurrencyToString(BigPow(10, 19))
-	finney := CurrencyToString(BigPow(10, 16))
-	szabo := CurrencyToString(BigPow(10, 13))
-	shannon := CurrencyToString(BigPow(10, 10))
-	babbage := CurrencyToString(BigPow(10, 7))
-	ada := CurrencyToString(BigPow(10, 4))
-	wei := CurrencyToString(big.NewInt(10))
+func (s *SizeSuite) TestCommon(c *checker.C) {
+	Eshf := CurrencyToString(BigPow(10, 19))
+	Pshf := CurrencyToString(BigPow(10, 16))
+	Tshf := CurrencyToString(BigPow(10, 13))
+	Gshf := CurrencyToString(BigPow(10, 10))
+	Mshf := CurrencyToString(BigPow(10, 7))
+	Kshf := CurrencyToString(BigPow(10, 4))
+	Shf := CurrencyToString(big.NewInt(10))
 
-	c.Assert(ether, checker.Equals, "10 Ether")
-	c.Assert(finney, checker.Equals, "10 Pshf")
-	c.Assert(szabo, checker.Equals, "10 Tshf")
-	c.Assert(shannon, checker.Equals, "10 Gshf")
-	c.Assert(babbage, checker.Equals, "10 Mshf")
-	c.Assert(ada, checker.Equals, "10 Kshf")
-	c.Assert(wei, checker.Equals, "10 Sht")
+	c.Assert(Eshf, checker.Equals, "10 Eshf")
+	c.Assert(Pshf, checker.Equals, "10 Pshf")
+	c.Assert(Tshf, checker.Equals, "10 Tshf")
+	c.Assert(Gshf, checker.Equals, "10 Gshf")
+	c.Assert(Mshf, checker.Equals, "10 Mshf")
+	c.Assert(Kshf, checker.Equals, "10 Kshf")
+	c.Assert(Shf, checker.Equals, "10 Shf")
 }

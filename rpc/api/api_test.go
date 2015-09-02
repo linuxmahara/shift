@@ -81,7 +81,7 @@ func TestCompileSolidity(t *testing.T) {
 		`   }\n` +
 		`}\n`
 
-	jsonstr := `{"jsonrpc":"2.0","method":"shf_compileSolidity","params":["` + source + `"],"id":64}`
+	jsonstr := `{"jsonrpc":"2.0","method":"eth_compileSolidity","params":["` + source + `"],"id":64}`
 
 	expCode := "0x605880600c6000396000f3006000357c010000000000000000000000000000000000000000000000000000000090048063c6888fa114602e57005b603d6004803590602001506047565b8060005260206000f35b60006007820290506053565b91905056"
 	expAbiDefinition := `[{"constant":false,"inputs":[{"name":"a","type":"uint256"}],"name":"multiply","outputs":[{"name":"d","type":"uint256"}],"type":"function"}]`

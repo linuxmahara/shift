@@ -20,6 +20,4 @@ import (
 	"math/big"
 )
 
-// Roughly 15 second blocktime (9 seconds between PoW blocks).
-// 5760 blocks per day. 6 SHT per block =~ 34560 SHT per day in rewards to miners.
-var BlockReward *big.Int = big.NewInt(6e+18)
+var BlockReward *big.Int = big.NewInt(3e+18)

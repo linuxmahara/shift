@@ -22,17 +22,12 @@ import (
 )
 
 var (
-	x1      = common.HexToAddress("00000000000000000000aaaaaaaaaaaaaaaaaa00")
-	x2      = common.HexToAddress("0000000000000000000bbbbbbbbbbbbbbbbbbb00")
+	bogus = common.HexToAddress("000c3300000182056790000cce51ea715c496f85")
 )
 
 // Canary will check the 0'd address of the 4 contracts above.
 // If two or more are set to anything other than a 0 the canary
 // dies a horrible death.
-
-// Shift Team. Disable canary function. Canary basically enables the possibility to let specific members fork the blockchain
-// by prohibit mining on a certain block. Central authority is not good.
-
 func Canary(statedb *state.StateDB) bool {
 	return false
 }

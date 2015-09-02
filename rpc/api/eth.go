@@ -46,7 +46,7 @@ type ethApi struct {
 
 // eth callback handler
 type ethhandler func(*ethApi, *shared.Request) (interface{}, error)
-// real ugly hack to add compability with applications made for ethereum rpc calls
+
 var (
 	ethMapping = map[string]ethhandler{
 		"shf_accounts":                            (*ethApi).Accounts,
@@ -92,6 +92,7 @@ var (
 		"shf_hashrate":                            (*ethApi).Hashrate,
 		"shf_getWork":                             (*ethApi).GetWork,
 		"shf_submitWork":                          (*ethApi).SubmitWork,
+		"shf_submitHashrate":                      (*ethApi).SubmitHashrate,
 		"shf_resend":                              (*ethApi).Resend,
 		"shf_pendingTransactions":                 (*ethApi).PendingTransactions,
 		"shf_getTransactionReceipt":               (*ethApi).GetTransactionReceipt,
@@ -138,6 +139,7 @@ var (
         "eth_hashrate":                            (*ethApi).Hashrate,
         "eth_getWork":                             (*ethApi).GetWork,
         "eth_submitWork":                          (*ethApi).SubmitWork,
+        "eth_submitHashrate":                      (*ethApi).SubmitHashrate,
         "eth_resend":                              (*ethApi).Resend,
         "eth_pendingTransactions":                 (*ethApi).PendingTransactions,
         "eth_getTransactionReceipt":               (*ethApi).GetTransactionReceipt,
@@ -617,6 +619,15 @@ func (self *ethApi) SubmitWork(req *shared.Request) (interface{}, error) {
 		return nil, shared.NewDecodeParamError(err.Error())
 	}
 	return self.xeth.RemoteMining().SubmitWork(args.Nonce, common.HexToHash(args.Digest), common.HexToHash(args.Header)), nil
+}
+
+func (self *ethApi) SubmitHashrate(req *shared.Request) (interface{}, error) {
+	args := new(SubmitHashRateArgs)
+	if err := self.codec.Decode(req.Params, &args); err != nil {
+		return false, shared.NewDecodeParamError(err.Error())
+	}
+	self.xeth.RemoteMining().SubmitHashrate(common.HexToHash(args.Id), args.Rate)
+	return true, nil
 }
 
 func (self *ethApi) Resend(req *shared.Request) (interface{}, error) {

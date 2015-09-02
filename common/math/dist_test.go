@@ -69,7 +69,7 @@ func TestDist(t *testing.T) {
 	EP := big.NewInt(100)
 	fmt.Println("BP", BP, "GL", GL, "EP", EP)
 	GP := GasPrice(BP, GL, EP)
-	fmt.Println("GP =", GP, "Sht per GU")
+	fmt.Println("GP =", GP, "Wei per GU")
 
 	S := len(vectors) / 4
 	fmt.Println("L", len(vectors), "S", S)

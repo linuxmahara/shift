@@ -41,8 +41,7 @@ const (
 )
 
 type BlockProcessor struct {
-	db      common.Database
-	extraDb common.Database
+	chainDb common.Database
 	// Mutex for locking the block processor. Blocks can only be handled one at a time
 	mutex sync.Mutex
 	// Canonical block chain
@@ -57,10 +56,9 @@ type BlockProcessor struct {
 	eventMux *event.TypeMux
 }
 
-func NewBlockProcessor(db, extra common.Database, pow pow.PoW, chainManager *ChainManager, eventMux *event.TypeMux) *BlockProcessor {
+func NewBlockProcessor(db common.Database, pow pow.PoW, chainManager *ChainManager, eventMux *event.TypeMux) *BlockProcessor {
 	sm := &BlockProcessor{
-		db:       db,
-		extraDb:  extra,
+		chainDb:  db,
 		mem:      make(map[string]*big.Int),
 		Pow:      pow,
 		bc:       chainManager,
@@ -84,8 +82,6 @@ func (sm *BlockProcessor) TransitionState(statedb *state.StateDB, parent, block 
 }
 
 func (self *BlockProcessor) ApplyTransaction(coinbase *state.StateObject, statedb *state.StateDB, header *types.Header, tx *types.Transaction, usedGas *big.Int, transientProcess bool) (*types.Receipt, *big.Int, error) {
-	// If we are mining this block and validating we want to set the logs back to 0
-
 	cb := statedb.GetStateObject(coinbase.Address())
 	_, gas, err := ApplyMessage(NewEnv(statedb, self.bc, tx, header), tx, cb)
 	if err != nil {
@@ -201,13 +197,13 @@ func (sm *BlockProcessor) Process(block *types.Block) (logs state.Logs, receipts
 
 func (sm *BlockProcessor) processWithParent(block, parent *types.Block) (logs state.Logs, receipts types.Receipts, err error) {
 	// Create a new state based on the parent's root (e.g., create copy)
-	state := state.New(parent.Root(), sm.db)
+	state := state.New(parent.Root(), sm.chainDb)
 	header := block.Header()
 	uncles := block.Uncles()
 	txs := block.Transactions()
 
 	// Block validation
-	if err = ValidateHeader(sm.Pow, header, parent, false); err != nil {
+	if err = ValidateHeader(sm.Pow, header, parent, false, false); err != nil {
 		return
 	}
 
@@ -331,7 +327,7 @@ func (sm *BlockProcessor) VerifyUncles(statedb *state.StateDB, block, parent *ty
 			return UncleError("uncle[%d](%x)'s parent is not ancestor (%x)", i, hash[:4], uncle.ParentHash[0:4])
 		}
 
-		if err := ValidateHeader(sm.Pow, uncle, ancestors[uncle.ParentHash], true); err != nil {
+		if err := ValidateHeader(sm.Pow, uncle, ancestors[uncle.ParentHash], true, true); err != nil {
 			return ValidationError(fmt.Sprintf("uncle[%d](%x) header invalid: %v", i, hash[:4], err))
 		}
 	}
@@ -342,7 +338,7 @@ func (sm *BlockProcessor) VerifyUncles(statedb *state.StateDB, block, parent *ty
 // GetBlockReceipts returns the receipts beloniging to the block hash
 func (sm *BlockProcessor) GetBlockReceipts(bhash common.Hash) types.Receipts {
 	if block := sm.ChainManager().GetBlock(bhash); block != nil {
-		return GetBlockReceipts(sm.extraDb, block.Hash())
+		return GetBlockReceipts(sm.chainDb, block.Hash())
 	}
 
 	return nil
@@ -352,41 +348,35 @@ func (sm *BlockProcessor) GetBlockReceipts(bhash common.Hash) types.Receipts {
 // where it tries to get it from the (updated) method which gets them from the receipts or
 // the depricated way by re-processing the block.
 func (sm *BlockProcessor) GetLogs(block *types.Block) (logs state.Logs, err error) {
-	receipts := GetBlockReceipts(sm.extraDb, block.Hash())
-	if len(receipts) > 0 {
-		// coalesce logs
-		for _, receipt := range receipts {
-			logs = append(logs, receipt.Logs()...)
-		}
-		return
+	receipts := GetBlockReceipts(sm.chainDb, block.Hash())
+	// coalesce logs
+	for _, receipt := range receipts {
+		logs = append(logs, receipt.Logs()...)
 	}
-
-	// TODO: remove backward compatibility
-	var (
-		parent = sm.bc.GetBlock(block.ParentHash())
-		state  = state.New(parent.Root(), sm.db)
-	)
-
-	sm.TransitionState(state, parent, block, true)
-
-	return state.Logs(), nil
+	return logs, nil
 }
 
 // See YP section 4.3.4. "Block Header Validity"
 // Validates a block. Returns an error if the block is invalid.
-func ValidateHeader(pow pow.PoW, block *types.Header, parent *types.Block, checkPow bool) error {
+func ValidateHeader(pow pow.PoW, block *types.Header, parent *types.Block, checkPow, uncle bool) error {
 	if big.NewInt(int64(len(block.Extra))).Cmp(params.MaximumExtraDataSize) == 1 {
 		return fmt.Errorf("Block extra data too long (%d)", len(block.Extra))
 	}
 
-	if block.Time > uint64(time.Now().Unix()) {
-		return BlockFutureErr
+	if uncle {
+		if block.Time.Cmp(common.MaxBig) == 1 {
+			return BlockTSTooBigErr
+		}
+	} else {
+		if block.Time.Cmp(big.NewInt(time.Now().Unix())) == 1 {
+			return BlockFutureErr
+		}
 	}
-	if block.Time <= parent.Time() {
+    if block.Time.Cmp(parent.Time()) != 1 {
 		return BlockEqualTSErr
 	}
 
-	expd := CalcDifficulty(block.Time, parent.Time(), parent.Number(), parent.Difficulty())
+	expd := CalcDifficulty(block.Time.Uint64(), parent.Time().Uint64(), parent.Number(), parent.Difficulty())
 	if expd.Cmp(block.Difficulty) != 0 {
 		return fmt.Errorf("Difficulty check failed for block %v, %v", block.Difficulty, expd)
 	}

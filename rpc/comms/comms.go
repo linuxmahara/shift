@@ -49,7 +49,7 @@ var (
 )
 
 type EthereumClient interface {
-	// Close underlaying connection
+	// Close underlying connection
 	Close()
 	// Send request
 	Send(interface{}) error
@@ -121,7 +121,7 @@ func ClientFromEndpoint(endpoint string, c codec.Codec) (EthereumClient, error) 
 	if strings.HasPrefix(endpoint, "rpc:") {
 		parts := strings.Split(endpoint, ":")
 		addr := "http://localhost"
-		port := uint(8545)
+		port := uint(53901)
 		if len(parts) >= 3 {
 			addr = parts[1] + ":" + parts[2]
 		}

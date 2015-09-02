@@ -37,6 +37,7 @@ import (
 	"github.com/shiftcurrency/shift/rpc/codec"
 	"github.com/shiftcurrency/shift/rpc/comms"
 	"github.com/shiftcurrency/shift/rpc/shared"
+	"github.com/shiftcurrency/shift/rpc/useragent"
 	"github.com/shiftcurrency/shift/xeth"
 )
 
@@ -71,6 +72,7 @@ var (
 		"admin_httpGet":            (*adminApi).HttpGet,
 		"admin_sleepBlocks":        (*adminApi).SleepBlocks,
 		"admin_sleep":              (*adminApi).Sleep,
+		"admin_enableUserAgent":    (*adminApi).EnableUserAgent,
 	}
 )
 
@@ -473,4 +475,11 @@ func (self *adminApi) HttpGet(req *shared.Request) (interface{}, error) {
 	}
 
 	return string(resp), nil
+}
+
+func (self *adminApi) EnableUserAgent(req *shared.Request) (interface{}, error) {
+	if fe, ok := self.xeth.Frontend().(*useragent.RemoteFrontend); ok {
+		fe.Enable()
+	}
+	return true, nil
 }

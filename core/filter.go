@@ -22,6 +22,8 @@ import (
 	"github.com/shiftcurrency/shift/common"
 	"github.com/shiftcurrency/shift/core/state"
 	"github.com/shiftcurrency/shift/core/types"
+	"github.com/shiftcurrency/shift/logger"
+	"github.com/shiftcurrency/shift/logger/glog"
 )
 
 type AccountChange struct {
@@ -111,7 +113,7 @@ done:
 			// Get the logs of the block
 			unfiltered, err := self.eth.BlockProcessor().GetLogs(block)
 			if err != nil {
-				chainlogger.Warnln("err: filter get logs ", err)
+				glog.V(logger.Warn).Infoln("err: filter get logs ", err)
 
 				break
 			}

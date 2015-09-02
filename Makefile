@@ -2,14 +2,18 @@
 # with Go source code. If you know what GOPATH is then you probably
 # don't need to bother with make.
 
-.PHONY: shift mist all test travis-test-with-coverage clean
+.PHONY: shift evm mist all test travis-test-with-coverage clean
 GOBIN = build/bin
 
-shfcli:
+geth:
 	build/env.sh go install -v $(shell build/ldflags.sh) ./cmd/shift
 	@echo "Done building."
-	@echo "Run \"$(GOBIN)/shift\" to launch shift cli."
+	@echo "Run \"$(GOBIN)/shift\" to launch shift."
 
+evm:
+	build/env.sh $(GOROOT)/bin/go install -v $(shell build/ldflags.sh) ./cmd/evm
+	@echo "Done building."
+	@echo "Run \"$(GOBIN)/evm to start the evm."
 mist:
 	build/env.sh go install -v $(shell build/ldflags.sh) ./cmd/mist
 	@echo "Done building."

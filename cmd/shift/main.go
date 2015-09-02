@@ -14,11 +14,11 @@
 // You should have received a copy of the GNU General Public License
 // along with go-ethereum. If not, see <http://www.gnu.org/licenses/>.
 
+// shift is the official command-line client for Ethereum.
 package main
 
 import (
 	"fmt"
-	"io"
 	"io/ioutil"
 	_ "net/http/pprof"
 	"os"
@@ -37,19 +37,21 @@ import (
 	"github.com/shiftcurrency/shift/core/types"
 	"github.com/shiftcurrency/shift/eth"
 	"github.com/shiftcurrency/shift/ethdb"
-	"github.com/shiftcurrency/shift/fdtrack"
 	"github.com/shiftcurrency/shift/logger"
 	"github.com/shiftcurrency/shift/logger/glog"
 	"github.com/shiftcurrency/shift/metrics"
+	"github.com/shiftcurrency/shift/params"
+	"github.com/shiftcurrency/shift/rlp"
 	"github.com/shiftcurrency/shift/rpc/codec"
 	"github.com/shiftcurrency/shift/rpc/comms"
-	"github.com/mattn/go-colorable"
-	"github.com/mattn/go-isatty"
 )
 
 const (
-	ClientIdentifier = "shift"
-	Version          = "1.0.1"
+	ClientIdentifier = "Shift"
+	Version          = "0.2.0"
+	VersionMajor     = 0
+	VersionMinor     = 2
+	VersionPatch     = 0
 )
 
 var (
@@ -91,9 +93,9 @@ recover <hex> recovers by hash
 		{
 			Action: makedag,
 			Name:   "makedag",
-			Usage:  "generate hash dag (for testing)",
+			Usage:  "generate ethash dag (for testing)",
 			Description: `
-The makedag command generates an hash DAG in /tmp/dag.
+The makedag command generates an ethash DAG in /tmp/dag.
 
 This command exists to support the system testing project.
 Regular users do not need to execute it.
@@ -108,6 +110,25 @@ The output of this command is supposed to be machine-readable.
 `,
 		},
 
+		{
+			Name:  "wallet",
+			Usage: "shift presale wallet",
+			Subcommands: []cli.Command{
+				{
+					Action: importWallet,
+					Name:   "import",
+					Usage:  "Not used in Shift.",
+				},
+			},
+			Description: `
+
+    get wallet import /path/to/my/presale.wallet
+
+will prompt for your password and imports your ether presale account.
+It can be used non-interactively with the --password option taking a
+passwordfile as argument containing the wallet password in plaintext.
+
+`},
 		{
 			Action: accountList,
 			Name:   "account",
@@ -131,7 +152,7 @@ Note that exporting your key in unencrypted format is NOT supported.
 
 Keys are stored under <DATADIR>/keys.
 It is safe to transfer the entire directory or the individual keys therein
-between shift nodes by simply copying.
+between ethereum nodes by simply copying.
 Make sure you backup your keys regularly.
 
 In order to use your account to send transactions, you need to unlock them using the
@@ -216,7 +237,7 @@ For non-interactive use the passphrase can be specified with the -password flag:
     shift --password <passwordfile> account import <keyfile>
 
 Note:
-As you can directly copy your encrypted accounts to another shift instance,
+As you can directly copy your encrypted accounts to another ethereum instance,
 this import mechanism is not needed when you transfer an account between
 nodes.
 					`,
@@ -226,27 +247,27 @@ nodes.
 		{
 			Action: console,
 			Name:   "console",
-			Usage:  `shift Console: interactive JavaScript environment`,
+			Usage:  `Shift Console: interactive JavaScript environment`,
 			Description: `
-The Shift console is an interactive shell for the JavaScript runtime environment
+The shift console is an interactive shell for the JavaScript runtime environment
 which exposes a node admin interface as well as the Ðapp JavaScript API.
 See https://github.com/shiftcurrency/shift/wiki/Javascipt-Console
 `},
 		{
 			Action: attach,
 			Name:   "attach",
-			Usage:  `shift Console: interactive JavaScript environment (connect to node)`,
+			Usage:  `Shift Console: interactive JavaScript environment (connect to node)`,
 			Description: `
-The Shift console is an interactive shell for the JavaScript runtime environment
+The shift console is an interactive shell for the JavaScript runtime environment
 which exposes a node admin interface as well as the Ðapp JavaScript API.
 See https://github.com/shiftcurrency/shift/wiki/Javascipt-Console.
-This command allows to open a console on a running Shift node.
+This command allows to open a console on a running shift node.
 `,
 		},
 		{
 			Action: execJSFiles,
 			Name:   "js",
-			Usage:  `executes the given JavaScript files in the Shift JavaScript VM`,
+			Usage:  `executes the given JavaScript files in the shift JavaScript VM`,
 			Description: `
 The JavaScript VM exposes a node admin interface as well as the Ðapp
 JavaScript API. See https://github.com/shiftcurrency/shift/wiki/Javascipt-Console
@@ -287,6 +308,9 @@ JavaScript API. See https://github.com/shiftcurrency/shift/wiki/Javascipt-Consol
 		utils.ExecFlag,
 		utils.WhisperEnabledFlag,
 		utils.VMDebugFlag,
+		utils.VMForceJitFlag,
+		utils.VMJitCacheFlag,
+		utils.VMEnableJitFlag,
 		utils.NetworkIdFlag,
 		utils.RPCCORSDomainFlag,
 		utils.VerbosityFlag,
@@ -308,6 +332,7 @@ JavaScript API. See https://github.com/shiftcurrency/shift/wiki/Javascipt-Consol
 	}
 	app.Before = func(ctx *cli.Context) error {
 		utils.SetupLogger(ctx)
+		utils.SetupVM(ctx)
 		if ctx.GlobalBool(utils.PProfEanbledFlag.Name) {
 			utils.StartPProf(ctx)
 		}
@@ -326,6 +351,27 @@ func main() {
 	}
 }
 
+func makeDefaultExtra() []byte {
+	var clientInfo = struct {
+		Version   uint
+		Name      string
+		GoVersion string
+		Os        string
+	}{uint(VersionMajor<<16 | VersionMinor<<8 | VersionPatch), ClientIdentifier, runtime.Version(), runtime.GOOS}
+	extra, err := rlp.EncodeToBytes(clientInfo)
+	if err != nil {
+		glog.V(logger.Warn).Infoln("error setting canonical miner information:", err)
+	}
+
+	if uint64(len(extra)) > params.MaximumExtraDataSize.Uint64() {
+		glog.V(logger.Warn).Infoln("error setting canonical miner information: extra exceeds", params.MaximumExtraDataSize)
+		glog.V(logger.Debug).Infof("extra: %x\n", extra)
+		return nil
+	}
+
+	return extra
+}
+
 func run(ctx *cli.Context) {
 	utils.CheckLegalese(ctx.GlobalString(utils.DataDirFlag.Name))
 	if ctx.GlobalBool(utils.OlympicFlag.Name) {
@@ -333,6 +379,8 @@ func run(ctx *cli.Context) {
 	}
 
 	cfg := utils.MakeEthConfig(ClientIdentifier, nodeNameVersion, ctx)
+	cfg.ExtraData = makeDefaultExtra()
+
 	ethereum, err := eth.New(cfg)
 	if err != nil {
 		utils.Fatalf("%v", err)
@@ -346,14 +394,6 @@ func run(ctx *cli.Context) {
 func attach(ctx *cli.Context) {
 	utils.CheckLegalese(ctx.GlobalString(utils.DataDirFlag.Name))
 
-	// Wrap the standard output with a colorified stream (windows)
-	if isatty.IsTerminal(os.Stdout.Fd()) {
-		if pr, pw, err := os.Pipe(); err == nil {
-			go io.Copy(colorable.NewColorableStdout(), pr)
-			os.Stdout = pw
-		}
-	}
-
 	var client comms.EthereumClient
 	var err error
 	if ctx.Args().Present() {
@@ -366,14 +406,14 @@ func attach(ctx *cli.Context) {
 	}
 
 	if err != nil {
-		utils.Fatalf("Unable to attach to Shift node - %v", err)
+		utils.Fatalf("Unable to attach to shift node - %v", err)
 	}
 
 	repl := newLightweightJSRE(
 		ctx.GlobalString(utils.JSpathFlag.Name),
 		client,
 		true,
-		nil)
+	)
 
 	if ctx.GlobalString(utils.ExecFlag.Name) != "" {
 		repl.batch(ctx.GlobalString(utils.ExecFlag.Name))
@@ -385,14 +425,6 @@ func attach(ctx *cli.Context) {
 
 func console(ctx *cli.Context) {
 	utils.CheckLegalese(ctx.GlobalString(utils.DataDirFlag.Name))
-
-	// Wrap the standard output with a colorified stream (windows)
-	if isatty.IsTerminal(os.Stdout.Fd()) {
-		if pr, pw, err := os.Pipe(); err == nil {
-			go io.Copy(colorable.NewColorableStdout(), pr)
-			os.Stdout = pw
-		}
-	}
 
 	cfg := utils.MakeEthConfig(ClientIdentifier, nodeNameVersion, ctx)
 	ethereum, err := eth.New(cfg)
@@ -512,9 +544,6 @@ func blockRecovery(ctx *cli.Context) {
 func startEth(ctx *cli.Context, eth *eth.Ethereum) {
 	// Start Ethereum itself
 	utils.StartEthereum(eth)
-
-	// Start logging file descriptor stats.
-	fdtrack.Start()
 
 	am := eth.AccountManager()
 	account := ctx.GlobalString(utils.UnlockedAccountFlag.Name)
