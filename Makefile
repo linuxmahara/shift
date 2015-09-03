@@ -5,7 +5,7 @@
 .PHONY: shift evm mist all test travis-test-with-coverage clean
 GOBIN = build/bin
 
-geth:
+shift:
 	build/env.sh go install -v $(shell build/ldflags.sh) ./cmd/shift
 	@echo "Done building."
 	@echo "Run \"$(GOBIN)/shift\" to launch shift."
