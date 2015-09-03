@@ -120,6 +120,7 @@ var (
 			"newAccount",
 			"deleteAccount",
 			"unlockAccount",
+			"IsAccountLocked",
 		},
 		"shh": []string{
 			"post",

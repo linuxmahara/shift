@@ -105,6 +105,11 @@ func (self *testFrontend) UnlockAccount(acc []byte) bool {
 	return true
 }
 
+func (self *testFrontend) IsAccountLocked(acc []byte) bool {
+	self.ethereum.AccountManager().IsLocked(common.BytesToAddress(acc))
+	return true
+}
+
 func (self *testFrontend) ConfirmTransaction(tx string) bool {
 	if self.wantNatSpec {
 		ds := docserver.New("/tmp/")

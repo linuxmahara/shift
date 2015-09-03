@@ -73,6 +73,10 @@ func (self *testjethre) UnlockAccount(acc []byte) bool {
 	return true
 }
 
+func (self *testjethre) IsAccountLocked(acc []byte) bool {
+	return self.ethereum.AccountManager().IsLocked(common.BytesToAddress(acc))
+}
+
 func (self *testjethre) ConfirmTransaction(tx string) bool {
 	if self.ethereum.NatSpec {
 		self.lastConfirm = natspec.GetNotice(self.xeth, tx, self.ds)

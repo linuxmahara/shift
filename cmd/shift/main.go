@@ -215,6 +215,20 @@ Note that account update has the a side effect that the order of your accounts
 changes.
 					`,
 				},
+// doesn't work since it's in memory for the running instance: TODO: do an IPC call to it
+				/*{
+					Action: isAccountLocked,
+					Name:   "locked",
+					Usage:  "check account lock status",
+					Description: `
+
+    shift account locked <address>
+
+Check locked status of an existing account.
+
+shift account locked <addr>
+					`,
+				},*/
 				{
 					Action: accountImport,
 					Name:   "import",
@@ -507,6 +521,23 @@ func unlockAccount(ctx *cli.Context, am *accounts.Manager, addr string, i int) (
 	return
 }
 
+// doesn't work since it's in memory for the running instance: TODO: do an IPC call to it
+/*func accountLocked(ctx *cli.Context, am *accounts.Manager, addr string) (addrHex string, locked bool) {
+	utils.CheckLegalese(ctx.GlobalString(utils.DataDirFlag.Name))
+
+	var err error
+	addrHex, err = utils.ParamToAddress(addr, am)
+	if err == nil {
+		locked = am.IsLocked(common.HexToAddress(addrHex))
+	}
+
+	if err != nil {
+		utils.Fatalf("Account lock check failed '%v'", err)
+	}
+
+	return
+}*/
+
 func blockRecovery(ctx *cli.Context) {
 	utils.CheckLegalese(ctx.GlobalString(utils.DataDirFlag.Name))
 
@@ -652,6 +683,21 @@ func accountUpdate(ctx *cli.Context) {
 		utils.Fatalf("Could not update the account: %v", err)
 	}
 }
+
+// doesn't work since it's in memory for the running instance: TODO: do an IPC call to it
+/*
+func isAccountLocked(ctx *cli.Context) {
+	utils.CheckLegalese(ctx.GlobalString(utils.DataDirFlag.Name))
+
+	am := utils.MakeAccountManager(ctx)
+	arg := ctx.Args().First()
+	if len(arg) == 0 {
+		utils.Fatalf("account address or index must be given as argument")
+	}
+
+	acct, locked := accountLocked(ctx, am, arg)
+	fmt.Printf("Account '%s' lock status: %t\n", acct, locked)
+}*/
 
 func importWallet(ctx *cli.Context) {
 	utils.CheckLegalese(ctx.GlobalString(utils.DataDirFlag.Name))

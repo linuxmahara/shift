@@ -360,6 +360,19 @@ func (self *jsre) UnlockAccount(addr []byte) bool {
 	}
 }
 
+func (self *jsre) IsAccountLocked(addr []byte) bool {
+	fmt.Printf("Please check account lock status %x.\n", addr)
+
+	locked := self.ethereum.AccountManager().IsLocked(common.BytesToAddress(addr))
+	if ( locked ) {
+		fmt.Println("Account is still locked.")
+	} else {
+		fmt.Println("Account is still unlocked.")
+	}
+
+	return locked
+}
+
 func (self *jsre) exec(filename string) error {
 	if err := self.re.Exec(filename); err != nil {
 		self.re.Stop(false)

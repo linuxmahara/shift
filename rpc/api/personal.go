@@ -38,6 +38,7 @@ var (
 		"personal_newAccount":    (*personalApi).NewAccount,
 		"personal_deleteAccount": (*personalApi).DeleteAccount,
 		"personal_unlockAccount": (*personalApi).UnlockAccount,
+		"personal_isAccountLocked": (*personalApi).IsAccountLocked,
 	}
 )
 
@@ -139,4 +140,16 @@ func (self *personalApi) UnlockAccount(req *shared.Request) (interface{}, error)
 
 	err := am.TimedUnlock(addr, args.Passphrase, time.Duration(args.Duration)*time.Second)
 	return err == nil, err
+}
+
+func (self *personalApi) IsAccountLocked(req *shared.Request) (interface{}, error) {
+	args := new(IsAccountLockedArgs)
+	if err := self.codec.Decode(req.Params, &args); err != nil {
+		return nil, shared.NewDecodeParamError(err.Error())
+	}
+
+	am := self.ethereum.AccountManager()
+	addr := common.HexToAddress(args.Address)
+
+	return am.IsLocked(addr), nil
 }

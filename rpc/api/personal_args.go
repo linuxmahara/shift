@@ -114,3 +114,26 @@ func (args *UnlockAccountArgs) UnmarshalJSON(b []byte) (err error) {
 
 	return nil
 }
+
+type IsAccountLockedArgs struct {
+	Address string
+}
+
+func (args *IsAccountLockedArgs) UnmarshalJSON(b []byte) (err error) {
+	var obj []interface{}
+	if err := json.Unmarshal(b, &obj); err != nil {
+		return shared.NewDecodeParamError(err.Error())
+	}
+
+	if len(obj) < 1 {
+		return shared.NewInsufficientParamsError(len(obj), 1)
+	}
+
+	if addrstr, ok := obj[0].(string); ok {
+		args.Address = addrstr
+	} else {
+		return shared.NewInvalidTypeError("address", "not a string")
+	}
+
+	return nil
+}
