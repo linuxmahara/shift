@@ -728,13 +728,13 @@ module.exports = {
 var BigNumber = require('bignumber.js');
 
 var unitMap = {
-    'Shf':      '1',
-    'Kshf':     '1000',
-    'Mshf':     '1000000',
-    'Gshf':     '1000000000',
-    'Tshf':     '1000000000000',
-    'Pshf':     '1000000000000000',
-    'Eshf':     '1000000000000000000',
+    'shf':      '1',
+    'kshf':     '1000',
+    'mshf':     '1000000',
+    'gshf':     '1000000000',
+    'tshf':     '1000000000000',
+    'pshf':     '1000000000000000',
+    'eshf':     '1000000000000000000',
 };
 
 /**
@@ -910,7 +910,7 @@ var toHex = function (val) {
  * @throws error if the unit is not correct:w
  */
 var getValueOfUnit = function (unit) {
-    unit = unit ? unit.toLowerCase() : 'shf';
+    unit = unit ? unit.toLowerCase() : 'Shf';
     var unitValue = unitMap[unit];
     if (unitValue === undefined) {
         throw new Error('This unit doesn\'t exists, please use the one of the following units' + JSON.stringify(unitMap, null, 2));
@@ -955,7 +955,7 @@ var fromShf = function(number, unit) {
  *
  * @method toShf
  * @param {Number|String|BigNumber} number can be a number, number string or a HEX of a decimal
- * @param {String} unit the unit to convert from, default shf
+ * @param {String} unit the unit to convert from, default Shf
  * @return {String|Object} When given a BigNumber object it returns one as well, otherwise a number
 */
 var toShf = function(number, unit) {

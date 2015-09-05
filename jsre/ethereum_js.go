@@ -1907,13 +1907,13 @@ module.exports = function (str, isNew) {
 var BigNumber = require('bignumber.js');
 
 var unitMap = {
-    'Shf':      '1',
-    'Kshf':     '1000',
-    'Mshf':     '1000000',
-    'Gshf':     '1000000000',
-    'Tshf':     '1000000000000',
-    'Pshf':     '1000000000000000',
-    'Eshf':     '1000000000000000000',
+    'shf':      '1',
+    'kshf':     '1000',
+    'mshf':     '1000000',
+    'gshf':     '1000000000',
+    'tshf':     '1000000000000',
+    'pshf':     '1000000000000000',
+    'eshf':     '1000000000000000000',
 };
 
 /**
@@ -2111,7 +2111,7 @@ var getValueOfUnit = function (unit) {
 };
 
 /**
- * Takes a number of wei and converts it to any other ether unit.
+ * Takes a number of shf and converts it to any other ether unit.
  *
  * @method fromShf
  * @param {Number|String} number can be a number, number string or a HEX of a decimal
@@ -2125,7 +2125,7 @@ var fromShf = function(number, unit) {
 };
 
 /**
- * Takes a number of a unit and converts it to wei.
+ * Takes a number of a unit and converts it to shf.
  *
  * @method toShf
  * @param {Number|String|BigNumber} number can be a number, number string or a HEX of a decimal
@@ -5292,7 +5292,7 @@ module.exports = {
 var Method = require('../method');
 
 /// @returns an array of objects describing web3.eth.filter api methods
-var eth = function () {
+var shf = function () {
     var newFilterCall = function (args) {
         var type = args[0];
 
@@ -5377,7 +5377,7 @@ var shh = function () {
 };
 
 module.exports = {
-    eth: eth,
+    eth: shf,
     shh: shh
 };
 
