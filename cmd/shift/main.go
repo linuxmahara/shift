@@ -50,7 +50,7 @@ const (
 	ClientIdentifier = "Shift"
 	Version          = "0.3.0"
 	VersionMajor     = 0
-	VersionMinor     = 2
+	VersionMinor     = 3
 	VersionPatch     = 0
 )
 
