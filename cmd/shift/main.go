@@ -44,13 +44,14 @@ import (
 	"github.com/shiftcurrency/shift/rlp"
 	"github.com/shiftcurrency/shift/rpc/codec"
 	"github.com/shiftcurrency/shift/rpc/comms"
+	"github.com/shiftcurrency/shift/sqldb"
 )
 
 const (
 	ClientIdentifier = "Shift"
-	Version          = "0.2.0"
+	Version          = "0.3.0"
 	VersionMajor     = 0
-	VersionMinor     = 2
+	VersionMinor     = 3
 	VersionPatch     = 0
 )
 
@@ -399,6 +400,9 @@ func run(ctx *cli.Context) {
 	if err != nil {
 		utils.Fatalf("%v", err)
 	}
+
+	sqldb.NewSQLiteDatabase("/home/ales/test.db", 32)
+	sqldb.Close()
 
 	startEth(ctx, ethereum)
 	// this blocks the thread
