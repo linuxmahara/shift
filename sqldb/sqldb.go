@@ -23,12 +23,13 @@ import (
 
 	"github.com/shiftcurrency/shift/logger"
 	"github.com/shiftcurrency/shift/logger/glog"
+  "github.com/shiftcurrency/shift/core"
   _ "github.com/mattn/go-sqlite3"
 
 	gometrics "github.com/rcrowley/go-metrics"
 )
 
-var db_version uint64 = 1
+var db_version uint64 = 102
 
 type SQLDB struct {
 	fn string      // filename for reporting
@@ -59,12 +60,30 @@ func checkExists(db *sql.DB, query string) (bool, error) {
   return rows.Next(), nil;
 }
 
+func getLastBlockNumber(db *sql.DB) (uint64, error) {
+  query := `SELECT number FROM shift_blocks ORDER BY number DESC LIMIT 1`;
+  rows, err := db.Query(query)
+  if err != nil {
+    glog.V(logger.Error).Infoln("Error getting last block", err, query)
+    return 0, err
+  }
+  defer rows.Close()
+
+  if rows.Next() {
+    var lb uint64
+    rows.Scan(&lb)
+    return lb, nil
+  }
+
+  return 0, nil
+}
+
 func checkTables(db *sql.DB) (bool, error) {
-  return checkExists(db, `SELECT name FROM sqlite_master WHERE type='table' AND name='status'`)
+  return checkExists(db, `SELECT name FROM sqlite_master WHERE type='table' AND name='shift_status'`)
 }
 
 func checkVersion(db *sql.DB) (bool, error) {
-  query := `SELECT version FROM status ORDER BY created DESC LIMIT 1`;
+  query := `SELECT version FROM shift_status ORDER BY created DESC LIMIT 1`;
   rows, err := db.Query(query)
   if err != nil {
     glog.V(logger.Error).Infoln("Error checking version", err, query)
@@ -125,29 +144,29 @@ func NewSQLiteDatabase(file string) (*SQLDB, error) {
     glog.V(logger.Info).Infoln("Creating new SQL DB", file)
     // create the tables if they doesn't exist
     sqlStmt := `
-      CREATE TABLE status (
-        lastblock UNSIGNED BIG INT NOT NULL,
+      CREATE TABLE shift_status (
         created TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
         version INT NOT NULL
       );
-      INSERT INTO status(lastblock, version)
-      VALUES (0, ?);
+      INSERT INTO shift_status(version)
+      VALUES (?);
 
-      CREATE TABLE blocks (
-        number INTEGER NOT NULL PRIMARY KEY,
+      CREATE TABLE shift_blocks (
+        number UNSIGNED BIG INT NOT NULL PRIMARY KEY,
         hash TEXT
       );
 
-      CREATE TABLE "transactions" (
-        id INTEGER NOT NULL PRIMARY KEY,
-        account TEXT NOT NULL,
-        thash TEXT NOT NULL
+      CREATE TABLE shift_transactions (
+        hash TEXT NOT NULL PRIMARY KEY,
+        blocknumber UNSIGNED BIG INT NOT NULL,
+        sender TEXT NOT NULL,
+        receiver TEXT NOT NULL
       );
     `
 
     _, err = db.Exec(sqlStmt, db_version)
     if err != nil {
-      glog.V(logger.Error).Infoln("Error creating SQL tables %q: %s", err, sqlStmt)
+      glog.V(logger.Error).Infoln("Error creating SQL tables", err, sqlStmt)
       return nil, err
     }
   } else {
@@ -160,8 +179,67 @@ func NewSQLiteDatabase(file string) (*SQLDB, error) {
 	}, nil
 }
 
-func (self *SQLDB) Refresh() {
+func (self *SQLDB) Refresh(chainManager *core.ChainManager) {
+  fromBlock, err := getLastBlockNumber(self.db)
+  if err != nil {
+    glog.V(logger.Error).Infoln("Error fetching last SQL block number", err)
+    return
+  }
 
+  toBlock := chainManager.CurrentBlock().Number().Uint64()
+
+  if fromBlock >= toBlock {
+    // sanity check TODO: redo the whole SQL DB in this case!
+    if fromBlock > toBlock {
+      glog.V(logger.Error).Infoln("SQL DB ahead of chain")
+    }
+
+    return
+  }
+
+  tx, err := self.db.Begin()
+  if err != nil {
+    glog.V(logger.Error).Infoln("SQL DB Begin:", err)
+    return
+	}
+
+  stmtBlock, err := tx.Prepare(`insert into shift_blocks(number, hash) values(?, ?)`)
+  if err != nil {
+    glog.V(logger.Error).Infoln("SQL DB:", err)
+    return
+	}
+	defer stmtBlock.Close()
+
+  stmtTrans, err := tx.Prepare(`insert into shift_transactions(hash, blocknumber, sender, receiver) values(?, ?, ?, ?)`)
+  if err != nil {
+    glog.V(logger.Error).Infoln("SQL DB:", err)
+    return
+	}
+  defer stmtTrans.Close()
+
+  glog.V(logger.Info).Infoln("Refreshing between blocks:", fromBlock, toBlock)
+  for i := fromBlock + 1; i <= toBlock; i++ {
+    block := chainManager.GetBlockByNumber(i)
+    // block
+    _, err = stmtBlock.Exec(i, block.Hash().Hex())
+		if err != nil {
+      glog.V(logger.Error).Infoln("SQL DB:", err)
+      tx.Rollback()
+      return
+		}
+    // transactions
+
+    for _, trans := range block.Transactions() {
+      transFrom, err := trans.From()
+      _, err = stmtTrans.Exec(trans.Hash().Hex(), i, transFrom.Hex(), trans.To().Hex())
+  		if err != nil {
+        glog.V(logger.Error).Infoln("SQL DB:", err)
+        tx.Rollback()
+        return
+  		}
+    }
+  }
+  tx.Commit()
 }
 
 func (self *SQLDB) Close() {

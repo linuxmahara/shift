@@ -429,6 +429,8 @@ func New(config *Config) (*Ethereum, error) {
 		return nil, err
 	}
 
+	eth.sqlDB.Refresh(eth.chainManager)
+
 	return eth, nil
 }
 
