@@ -275,6 +275,10 @@ func (bc *ChainManager) Reset() {
 }
 
 func (bc *ChainManager) removeBlock(block *types.Block) {
+	if bc.sqlDB != nil {
+		bc.sqlDB.DeleteBlock(block)
+	}
+
 	bc.chainDb.Delete(append(blockHashPre, block.Hash().Bytes()...))
 }
 
@@ -355,7 +359,9 @@ func (bc *ChainManager) insert(block *types.Block) {
 	bc.currentBlock = block
 	bc.lastBlockHash = block.Hash()
 
-  bc.sqlDB.SaveBlock(block)
+  if bc.sqlDB != nil {
+  	bc.sqlDB.InsertBlock(block)
+	}
 }
 
 // Accessors

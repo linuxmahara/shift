@@ -243,7 +243,7 @@ func (self *SQLDB) Refresh(chainManager *core.ChainManager) {
   tx.Commit()
 }
 
-func (self *SQLDB) SaveBlock(block *types.Block) {
+func (self *SQLDB) InsertBlock(block *types.Block) {
   tx, err := self.db.Begin()
   if err != nil {
     glog.V(logger.Error).Infoln("SQL DB Begin:", err)
@@ -275,7 +275,7 @@ func (self *SQLDB) SaveBlock(block *types.Block) {
 
   for _, trans := range block.Transactions() {
     transFrom, err := trans.From()
-    _, err = stmtTrans.Exec(trans.Hash().Hex(), block.Number(), transFrom.Hex(), trans.To().Hex())
+    _, err = stmtTrans.Exec(trans.Hash().Hex(), block.Number().Uint64(), transFrom.Hex(), trans.To().Hex())
     if err != nil {
       glog.V(logger.Error).Infoln("SQL DB:", err)
       tx.Rollback()
@@ -284,6 +284,14 @@ func (self *SQLDB) SaveBlock(block *types.Block) {
   }
 
   tx.Commit()
+}
+
+func (self *SQLDB) DeleteBlock(block *types.Block) {
+  query := `DELETE FROM blocks WHERE number = ?`
+  _, err := self.db.Exec(query, block.Number().Uint64())
+  if err != nil {
+    glog.V(logger.Error).Infoln("Error creating SQL tables", err, query)
+  }
 }
 
 func (self *SQLDB) Close() {

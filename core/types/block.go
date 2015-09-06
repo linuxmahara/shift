@@ -137,7 +137,8 @@ type Block struct {
 
 // A bit of a hack to put it here, but good enough for now
 type SQLDatabase interface {
-	SaveBlock(block *Block)
+	InsertBlock(block *Block)
+	DeleteBlock(block *Block)
 }
 
 
