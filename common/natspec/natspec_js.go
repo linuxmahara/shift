@@ -670,12 +670,12 @@ var BigNumber = require('bignumber.js');
 
 var ETH_UNITS = [
     'shf',
-    'Kshf',
-    'Mshf',
+    'kshf',
+    'kshf',
     'gshf',
-    'Tshf',
-    'Pshf',
-    'Eshf',
+    'tshf',
+    'pshf',
+    'eshf',
 
 ];
 
@@ -910,7 +910,7 @@ var toHex = function (val) {
  * @throws error if the unit is not correct:w
  */
 var getValueOfUnit = function (unit) {
-    unit = unit ? unit.toLowerCase() : 'Shf';
+    unit = unit ? unit.toLowerCase() : 'shf';
     var unitValue = unitMap[unit];
     if (unitValue === undefined) {
         throw new Error('This unit doesn\'t exists, please use the one of the following units' + JSON.stringify(unitMap, null, 2));
