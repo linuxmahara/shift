@@ -401,9 +401,6 @@ func run(ctx *cli.Context) {
 		utils.Fatalf("%v", err)
 	}
 
-	sqldb.NewSQLiteDatabase("/home/ales/test.db", 32)
-	sqldb.Close()
-
 	startEth(ctx, ethereum)
 	// this blocks the thread
 	ethereum.WaitForShutdown()
