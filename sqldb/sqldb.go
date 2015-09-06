@@ -24,6 +24,7 @@ import (
 	"github.com/shiftcurrency/shift/logger"
 	"github.com/shiftcurrency/shift/logger/glog"
   "github.com/shiftcurrency/shift/core"
+  "github.com/shiftcurrency/shift/core/types"
   _ "github.com/mattn/go-sqlite3"
 
 	gometrics "github.com/rcrowley/go-metrics"
@@ -239,6 +240,49 @@ func (self *SQLDB) Refresh(chainManager *core.ChainManager) {
   		}
     }
   }
+  tx.Commit()
+}
+
+func (self *SQLDB) SaveBlock(block *types.Block) {
+  tx, err := self.db.Begin()
+  if err != nil {
+    glog.V(logger.Error).Infoln("SQL DB Begin:", err)
+    return
+  }
+
+  stmtBlock, err := tx.Prepare(`insert into shift_blocks(number, hash) values(?, ?)`)
+  if err != nil {
+    glog.V(logger.Error).Infoln("SQL DB:", err)
+    return
+  }
+  defer stmtBlock.Close()
+
+  stmtTrans, err := tx.Prepare(`insert into shift_transactions(hash, blocknumber, sender, receiver) values(?, ?, ?, ?)`)
+  if err != nil {
+    glog.V(logger.Error).Infoln("SQL DB:", err)
+    return
+  }
+  defer stmtTrans.Close()
+
+  // block
+  _, err = stmtBlock.Exec(block.Number(), block.Hash().Hex())
+  if err != nil {
+    glog.V(logger.Error).Infoln("SQL DB:", err)
+    tx.Rollback()
+    return
+  }
+  // transactions
+
+  for _, trans := range block.Transactions() {
+    transFrom, err := trans.From()
+    _, err = stmtTrans.Exec(trans.Hash().Hex(), block.Number(), transFrom.Hex(), trans.To().Hex())
+    if err != nil {
+      glog.V(logger.Error).Infoln("SQL DB:", err)
+      tx.Rollback()
+      return
+    }
+  }
+
   tx.Commit()
 }
 
