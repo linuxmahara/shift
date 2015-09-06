@@ -44,7 +44,7 @@ import (
 	"github.com/shiftcurrency/shift/rlp"
 	"github.com/shiftcurrency/shift/rpc/codec"
 	"github.com/shiftcurrency/shift/rpc/comms"
-	"github.com/shiftcurrency/shift/sqldb"
+	//"github.com/shiftcurrency/shift/sqldb"
 )
 
 const (
