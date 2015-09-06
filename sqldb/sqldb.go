@@ -30,7 +30,7 @@ import (
 	gometrics "github.com/rcrowley/go-metrics"
 )
 
-var db_version uint64 = 102
+var db_version uint64 = 1
 
 type SQLDB struct {
 	fn string      // filename for reporting
@@ -218,7 +218,7 @@ func (self *SQLDB) Refresh(chainManager *core.ChainManager) {
 	}
   defer stmtTrans.Close()
 
-  glog.V(logger.Info).Infoln("Refreshing between blocks:", fromBlock, toBlock)
+  glog.V(logger.Info).Infoln("SQL DB refreshing between blocks:", fromBlock, toBlock)
   for i := fromBlock + 1; i <= toBlock; i++ {
     block := chainManager.GetBlockByNumber(i)
     // block
