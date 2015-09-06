@@ -17,8 +17,8 @@
 package sqldb
 
 import (
+  "os"
   "database/sql"
-	"path/filepath"
 	"sync"
 
 	"github.com/shiftcurrency/shift/logger"
@@ -28,14 +28,7 @@ import (
 	gometrics "github.com/rcrowley/go-metrics"
 )
 
-var OpenFileLimit = 64
-
-// cacheRatio specifies how the total alloted cache is distributed between the
-// various system databases.
-var cacheRatio = map[string]float64{
-	"dapp":      2.0 / 13.0,
-	"chaindata": 11.0 / 13.0,
-}
+var db_version uint64 = 1
 
 type SQLDB struct {
 	fn string      // filename for reporting
@@ -55,40 +48,120 @@ type SQLDB struct {
 	quitChan chan chan error // Quit channel to stop the metrics collection before closing the database
 }
 
+func checkExists(db *sql.DB, query string) (bool, error) {
+  rows, err := db.Query(query)
+  if err != nil {
+    glog.V(logger.Error).Infoln("Error checking existence", err, query)
+    return false, err
+  }
+  defer rows.Close()
+
+  return rows.Next(), nil;
+}
+
+func checkTables(db *sql.DB) (bool, error) {
+  return checkExists(db, `SELECT name FROM sqlite_master WHERE type='table' AND name='status'`)
+}
+
+func checkVersion(db *sql.DB) (bool, error) {
+  query := `SELECT version FROM status ORDER BY created DESC LIMIT 1`;
+  rows, err := db.Query(query)
+  if err != nil {
+    glog.V(logger.Error).Infoln("Error checking version", err, query)
+    return false, err
+  }
+  defer rows.Close()
+
+  if rows.Next() {
+    var v uint64
+    rows.Scan(&v)
+    return (v == db_version), nil
+  }
+
+  return false, nil
+}
+
 // NewSQLiteDatabase returns a sqlite3 wrapped object. sqlite3 does not persist data by
 // it self but requires a background poller which syncs every X. `Flush` should be called
 // when data needs to be stored and written to disk.
-func NewSQLiteDatabase(file string, cache int) (*SQLDB, error) {
-	// Calculate the cache allowance for this particular database
-	cache = int(float64(cache) * cacheRatio[filepath.Base(file)])
-	if cache < 16 {
-		cache = 16
-	}
-	glog.V(logger.Info).Infof("Alloted %dMB cache to %s", cache, file)
-
+func NewSQLiteDatabase(file string) (*SQLDB, error) {
 	// Open the db
 	db, err := sql.Open("sqlite3", file)
 	// (Re)check for errors and abort if opening of the db failed
 	if err != nil {
-    glog.V(logger.Error).Infoln("Error opening sqlite3 file %q: %s", err, file)
 		return nil, err
 	}
 
-  // create the tables if they doesn't exist
-  sqlStmt := `
-  create table blocks (id integer not null primary key, hash text);
-  create table "transactions" (id integer not null primary key, account text, "transaction" text);
-  `
-  _, err = db.Exec(sqlStmt)
+  var cv bool = false
+  var ct bool = false
+  ct, err = checkTables(db)
   if err != nil {
-    glog.V(logger.Error).Infoln("Error creating SQL tables %q: %s", err, sqlStmt)
-    return nil, err
+		return nil, err
+	}
+
+  if ct {
+    cv, err = checkVersion(db)
+    if err != nil {
+		  return nil, err
+	  }
+  }
+
+  // tables exist with version mismatch, drop and recreate
+  if ct && !cv {
+    glog.V(logger.Info).Infoln("Dropping old SQL DB", file)
+    db.Close()
+    os.Remove(file)
+
+    // Open the db
+  	db, err = sql.Open("sqlite3", file)
+  	// (Re)check for errors and abort if opening of the db failed
+  	if err != nil {
+  		return nil, err
+  	}
+    ct = false
+  }
+
+  if !ct {
+    glog.V(logger.Info).Infoln("Creating new SQL DB", file)
+    // create the tables if they doesn't exist
+    sqlStmt := `
+      CREATE TABLE status (
+        lastblock UNSIGNED BIG INT NOT NULL,
+        created TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        version INT NOT NULL
+      );
+      INSERT INTO status(lastblock, version)
+      VALUES (0, ?);
+
+      CREATE TABLE blocks (
+        number INTEGER NOT NULL PRIMARY KEY,
+        hash TEXT
+      );
+
+      CREATE TABLE "transactions" (
+        id INTEGER NOT NULL PRIMARY KEY,
+        account TEXT NOT NULL,
+        thash TEXT NOT NULL
+      );
+    `
+
+    _, err = db.Exec(sqlStmt, db_version)
+    if err != nil {
+      glog.V(logger.Error).Infoln("Error creating SQL tables %q: %s", err, sqlStmt)
+      return nil, err
+    }
+  } else {
+    glog.V(logger.Info).Infoln("Loading existing SQL DB", file)
   }
 
 	return &SQLDB{
 		fn: file,
 		db: db,
 	}, nil
+}
+
+func (self *SQLDB) Refresh() {
+
 }
 
 func (self *SQLDB) Close() {
@@ -109,7 +182,7 @@ func (self *SQLDB) Close() {
 	}*/
 
 	self.db.Close()
-	glog.V(logger.Error).Infoln("commited and closed db:", self.fn)
+	glog.V(logger.Error).Infoln("Closed SQL DB:", self.fn)
 }
 
 func (self *SQLDB) DB() *sql.DB {

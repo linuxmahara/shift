@@ -44,7 +44,7 @@ import (
 	"github.com/shiftcurrency/shift/rlp"
 	"github.com/shiftcurrency/shift/rpc/codec"
 	"github.com/shiftcurrency/shift/rpc/comms"
-	//"github.com/shiftcurrency/shift/sqldb"
+	"github.com/shiftcurrency/shift/sqldb"
 )
 
 const (
@@ -401,7 +401,13 @@ func run(ctx *cli.Context) {
 		utils.Fatalf("%v", err)
 	}
 
-	startEth(ctx, ethereum)
+	sdb, err := sqldb.NewSQLiteDatabase(filepath.Join(cfg.DataDir, "sql.db"))
+	if err != nil {
+		utils.Fatalf("%v", err)
+	}
+	sdb.Close()
+
+	//startEth(ctx, ethereum)
 	// this blocks the thread
 	ethereum.WaitForShutdown()
 }
