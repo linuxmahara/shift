@@ -630,6 +630,7 @@ func (s *Ethereum) Stop() {
 		s.whisper.Stop()
 	}
 	s.StopAutoDAG()
+	s.sqlDB.Close() // close here since we want to keep it open for the lifetime, not "cache" like the levelDB
 
 	close(s.shutdownChan)
 }
