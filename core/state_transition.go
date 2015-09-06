@@ -22,7 +22,7 @@ import (
 
 	"github.com/shiftcurrency/shift/common"
 	"github.com/shiftcurrency/shift/core/state"
-	"github.com/chiftcurrency/shift/core/vm"
+	"github.com/shiftcurrency/shift/core/vm"
 	"github.com/shiftcurrency/shift/logger"
 	"github.com/shiftcurrency/shift/logger/glog"
 	"github.com/shiftcurrency/shift/params"
