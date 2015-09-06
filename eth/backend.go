@@ -46,6 +46,7 @@ import (
 	"github.com/shiftcurrency/shift/p2p/discover"
 	"github.com/shiftcurrency/shift/p2p/nat"
 	"github.com/shiftcurrency/shift/whisper"
+	"github.com/shiftcurrency/shift/sqldb"
 )
 
 const (
@@ -219,6 +220,7 @@ type Ethereum struct {
 	// DB interfaces
 	chainDb common.Database // Block chain databe
 	dappDb  common.Database // Dapp database
+	sqlDB   *sqldb.SQLDB
 
 	// Closed when databases are flushed and closed
 	databasesClosed chan bool
@@ -421,6 +423,11 @@ func New(config *Config) (*Ethereum, error) {
 	}
 
 	vm.Debug = config.VmDebug
+
+	eth.sqlDB, err = sqldb.NewSQLiteDatabase(filepath.Join(config.DataDir, "sql.db"))
+	if err != nil {
+		return nil, err
+	}
 
 	return eth, nil
 }
