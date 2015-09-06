@@ -186,11 +186,11 @@ func makeHeader(parent *types.Block, state *state.StateDB) *types.Header {
 
 // newCanonical creates a new deterministic canonical chain by running
 // InsertChain on the result of makeChain.
-func newCanonical(n int, db common.Database) (*BlockProcessor, error) {
+func newCanonical(n int, db common.Database, sqldb types.SQLDatabase) (*BlockProcessor, error) {
 	evmux := &event.TypeMux{}
 
 	WriteTestNetGenesisBlock(db, 0)
-	chainman, _ := NewChainManager(db, FakePow{}, evmux)
+	chainman, _ := NewChainManager(db, sqldb, FakePow{}, evmux)
 	bman := NewBlockProcessor(db, FakePow{}, chainman, evmux)
 	bman.bc.SetProcessor(bman)
 	parent := bman.bc.CurrentBlock()

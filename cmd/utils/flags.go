@@ -479,7 +479,7 @@ func MakeChain(ctx *cli.Context) (chain *core.ChainManager, chainDb common.Datab
 	eventMux := new(event.TypeMux)
 	pow := ethash.New()
 	//genesis := core.GenesisBlock(uint64(ctx.GlobalInt(GenesisNonceFlag.Name)), blockDB)
-	chain, err = core.NewChainManager(chainDb, pow, eventMux)
+	chain, err = core.NewChainManager(chainDb, nil, pow, eventMux)
 	if err != nil {
 		Fatalf("Could not start chainmanager: %v", err)
 	}

@@ -265,7 +265,7 @@ func (self *SQLDB) SaveBlock(block *types.Block) {
   defer stmtTrans.Close()
 
   // block
-  _, err = stmtBlock.Exec(block.Number(), block.Hash().Hex())
+  _, err = stmtBlock.Exec(block.Number().Uint64(), block.Hash().Hex())
   if err != nil {
     glog.V(logger.Error).Infoln("SQL DB:", err)
     tx.Rollback()

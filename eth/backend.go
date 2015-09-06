@@ -363,6 +363,11 @@ func New(config *Config) (*Ethereum, error) {
 		GpobaseCorrectionFactor: config.GpobaseCorrectionFactor,
 	}
 
+	eth.sqlDB, err = sqldb.NewSQLiteDatabase(filepath.Join(config.DataDir, "sql.db"))
+	if err != nil {
+		return nil, err
+	}
+
 	if config.PowTest {
 		glog.V(logger.Info).Infof("ethash used in test mode")
 		eth.pow, err = ethash.NewForTesting()
@@ -373,7 +378,7 @@ func New(config *Config) (*Ethereum, error) {
 		eth.pow = ethash.New()
 	}
 	//genesis := core.GenesisBlock(uint64(config.GenesisNonce), stateDb)
-	eth.chainManager, err = core.NewChainManager(chainDb, eth.pow, eth.EventMux())
+	eth.chainManager, err = core.NewChainManager(chainDb, eth.sqlDB, eth.pow, eth.EventMux())
 	if err != nil {
 		if err == core.ErrNoGenesis {
 			return nil, fmt.Errorf(`Genesis block not found. Please supply a genesis block with the "--genesis /path/to/file" argument`)
@@ -423,11 +428,6 @@ func New(config *Config) (*Ethereum, error) {
 	}
 
 	vm.Debug = config.VmDebug
-
-	eth.sqlDB, err = sqldb.NewSQLiteDatabase(filepath.Join(config.DataDir, "sql.db"))
-	if err != nil {
-		return nil, err
-	}
 
 	eth.sqlDB.Refresh(eth.chainManager)
 
